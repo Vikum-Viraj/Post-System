@@ -1,31 +1,61 @@
-import React, { useState } from 'react';
-import { Plus, Search, FileText, Eye, Download, ArrowRight } from 'lucide-react';
-import { Product, Quotation, QuotationItem } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Plus, Search, FileText, Eye, ArrowRight } from 'lucide-react';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { Product, Quotation } from '../types';
 import QuotationForm from '../components/QuotationForm';
 import QuotationPreview from '../components/QuotationPreview';
+import axiosInstance from '../config/axiosConfig';
 
-interface QuotationsProps {
-  products: Product[];
-  quotations: Quotation[];
-  onAddQuotation: (quotation: Omit<Quotation, 'id' | 'date'>) => void;
-  onConvertToInvoice: (quotation: Quotation) => void;
-}
+const Quotations: React.FC = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [quotations, setQuotations] = useState<Quotation[]>([]);
+  // (Removed duplicate useState declarations)
 
-const Quotations: React.FC<QuotationsProps> = ({ 
-  products, 
-  quotations, 
-  onAddQuotation, 
-  onConvertToInvoice 
-}) => {
+  useEffect(() => {
+    // Fetch quotations
+    const fetchQuotations = async () => {
+      try {
+        const response = await axiosInstance.get('/quotation');
+        setQuotations(response.data);
+      } catch (error) {
+        alert('Failed to fetch quotations');
+      }
+    };
+    fetchQuotations();
+  }, []);
+
+  // Optionally fetch products if needed for QuotationForm
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await axiosInstance.get('/products');
+        setProducts(response.data);
+      } catch (error) {
+        // ignore
+      }
+    };
+    fetchProducts();
+  }, []);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [previewQuotation, setPreviewQuotation] = useState<Quotation | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: keyof Quotation; direction: 'ascending' | 'descending' } | null>(null);
+  const [isSavingInvoice, setIsSavingInvoice] = useState(false);
 
-  const filteredQuotations = quotations.filter(quotation =>
-    quotation.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    quotation.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredQuotations = quotations.filter(quotation => {
+    const search = searchTerm.trim().toLowerCase();
+    const customerName = quotation.customerName?.toLowerCase() || '';
+    // Always treat id as string for search
+    const idStr = (typeof quotation.id === 'string' ? quotation.id : String(quotation.id)).toLowerCase();
+    // Also allow searching by last 6 digits of the id (quotation number)
+    const idLast6 = idStr.slice(-6);
+    return (
+      customerName.includes(search) ||
+      idStr.includes(search) ||
+      idLast6.includes(search)
+    );
+  });
 
   const sortedQuotations = React.useMemo(() => {
     let sortableItems = [...filteredQuotations];
@@ -60,17 +90,40 @@ const Quotations: React.FC<QuotationsProps> = ({
     setSortConfig({ key, direction });
   };
 
-  const handleAddQuotation = (quotationData: Omit<Quotation, 'id' | 'date'>) => {
-    onAddQuotation(quotationData);
+  const handleAddQuotation = async (quotationData: Omit<Quotation, 'id' | 'date'>) => {
+    // After adding, fetch all quotations again to ensure the list is up to date
     setShowForm(false);
+    try {
+      const response = await axiosInstance.get('/quotation');
+      setQuotations(response.data);
+    } catch (error) {
+      // fallback: do nothing, keep old list
+    }
   };
 
-  const handleConvertToInvoice = (quotation: Quotation) => {
-    onConvertToInvoice(quotation);
+
+  const handleInvoice = async (quotation: Quotation, payment: 'cash' | 'credit') => {
+    setIsSavingInvoice(true);
+    // Remove id and date/createdDate from payload
+    const { id, date, createdDate, ...rest } = quotation as any;
+    const payload = { ...rest, payment };
+    try {
+      const response = await axiosInstance.post('/invoice', payload);
+      if (response.status === 200 || response.status === 201) {
+        toast.success(payment === 'cash' ? 'Cash Invoice Created!' : 'Credit Invoice Created!');
+      } else {
+        toast.error('Failed to create invoice.');
+      }
+    } catch (error) {
+      toast.error('Failed to create invoice.');
+    } finally {
+      setIsSavingInvoice(false);
+    }
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <ToastContainer position="top-right" autoClose={2000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover aria-label="Invoice notification" />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
         <div className="mb-4 sm:mb-0">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Quotations</h1>
@@ -182,18 +235,33 @@ const Quotations: React.FC<QuotationsProps> = ({
               {sortedQuotations.map((quotation) => (
                 <tr key={quotation.id} className="hover:bg-gray-50">
                   <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    #{quotation.id.slice(-6).toUpperCase()}
+                    #{
+                      typeof quotation.id === 'string'
+                        ? quotation.id.slice(-6).toUpperCase()
+                        : quotation.id !== undefined && quotation.id !== null
+                          ? String(quotation.id).slice(-6).toUpperCase()
+                          : '------'
+                    }
                   </td>
                   <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="font-medium">{quotation.customerName}</div>
                     <div className="text-xs text-gray-400">{quotation.customerEmail}</div>
                   </td>
                   <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(quotation.date).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric'
-                    })}
+                    {
+                      (() => {
+                        const dateStr = quotation.date || (quotation as any).createdDate;
+                        if (!dateStr) return '';
+                        const dateObj = new Date(dateStr);
+                        return isNaN(dateObj.getTime())
+                          ? ''
+                          : dateObj.toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            });
+                      })()
+                    }
                   </td>
                   <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {quotation.items.length}
@@ -211,10 +279,25 @@ const Quotations: React.FC<QuotationsProps> = ({
                         <Eye className="h-5 w-5" />
                       </button>
                       <button
-                        onClick={() => handleConvertToInvoice(quotation)}
-                        className="p-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100 rounded transition-colors duration-200"
-                        title="Convert to Invoice"
+                        onClick={() => handleInvoice(quotation, 'cash')}
+                        className="relative p-1 rounded bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:text-emerald-800 transition-colors duration-200 group"
+                        title="Cash Invoice"
+                        disabled={isSavingInvoice}
                       >
+                        {isSavingInvoice ? (
+                          <span className="loader mr-1" style={{ width: 16, height: 16, display: 'inline-block', border: '2px solid #10b981', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                        ) : null}
+                        <ArrowRight className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={() => handleInvoice(quotation, 'credit')}
+                        className="relative p-1 rounded bg-orange-100 text-orange-600 hover:bg-orange-200 hover:text-orange-800 transition-colors duration-200 group"
+                        title="Credit Invoice"
+                        disabled={isSavingInvoice}
+                      >
+                        {isSavingInvoice ? (
+                          <span className="loader mr-1" style={{ width: 16, height: 16, display: 'inline-block', border: '2px solid #fb923c', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                        ) : null}
                         <ArrowRight className="h-5 w-5" />
                       </button>
                     </div>
@@ -252,6 +335,14 @@ const Quotations: React.FC<QuotationsProps> = ({
           onClose={() => setPreviewQuotation(null)}
         />
       )}
+
+      {/* Loader spinner keyframes for invoice buttons */}
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };

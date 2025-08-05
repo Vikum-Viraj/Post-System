@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { X, Plus, Search, Trash2 } from 'lucide-react';
 import { Quotation } from '../types';
 import axiosInstance from '../config/axiosConfig';
@@ -35,6 +37,9 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
     name: '',
     email: '',
     phone: '',
+    orderRef: '',
+    receiverCompany: '',
+    receiverAddress: '',
   });
   
   const [items, setItems] = useState<QuotationItem[]>([]);
@@ -155,7 +160,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerData.name || !customerData.email) {
+    if (!customerData.name) {
       alert('Please fill in all required customer fields');
       return;
     }
@@ -168,13 +173,27 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
       customerName: customerData.name,
       customerEmail: customerData.email,
       customerPhone: customerData.phone,
+      receiverCompany: customerData.receiverCompany,
+      receiverAddress: customerData.receiverAddress,
       items,
       subtotal,
       totalDiscount: itemDiscounts + totalDiscount,
       total,
+      orderRef: customerData.orderRef,
     };
 
-    onSubmit(quotationData);
+    // Integrate API call to create quotation
+    (async () => {
+      try {
+        const response = await axiosInstance.post('/quotation', quotationData);
+        toast.success('Quotation created successfully!');
+        onSubmit(response.data);
+        console.log('Quotation submitted:', response.data);
+      } catch (error) {
+        toast.error('Failed to create quotation. Please try again.');
+        console.error('Quotation creation error:', error);
+      }
+    })();
   };
 
   // Handle Enter key press
@@ -187,6 +206,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <ToastContainer position="top-right" autoClose={2000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover aria-label="Quotation notification" />
       <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
@@ -204,7 +224,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
             {/* Customer Information */}
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Information</h3>
-              <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Customer Name *
@@ -220,15 +240,14 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email Address *
+                    Email Address
                   </label>
                   <input
                     type="email"
                     value={customerData.email}
                     onChange={(e) => setCustomerData({ ...customerData, email: e.target.value })}
-                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="Enter email address"
+                    placeholder="Enter email address (optional)"
                   />
                 </div>
                 <div>
@@ -243,6 +262,39 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
                     placeholder="Enter phone number"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Order Ref
+                  </label>
+                  <input
+                    type="text"
+                    value={customerData.orderRef}
+                    onChange={(e) => setCustomerData({ ...customerData, orderRef: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="Enter order reference (optional)"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Receiver Company Name</label>
+                  <input
+                    type="text"
+                    value={customerData.receiverCompany}
+                    onChange={e => setCustomerData({ ...customerData, receiverCompany: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="Enter receiver company name"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Receiver Address</label>
+                  <input
+                    type="text"
+                    value={customerData.receiverAddress}
+                    onChange={e => setCustomerData({ ...customerData, receiverAddress: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="Enter receiver address"
+                  />
+                </div>
+                {/* Sales Person Email/Phone fields removed, now hardcoded in preview */}
               </div>
             </div>
 
@@ -509,7 +561,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
               </button>
               <button
                 type="submit"
-                disabled={!customerData.name || !customerData.email || items.length === 0}
+                disabled={!customerData.name || items.length === 0}
                 className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200"
               >
                 Create Quotation

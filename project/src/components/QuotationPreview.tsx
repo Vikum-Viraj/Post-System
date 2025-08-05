@@ -8,6 +8,18 @@ interface QuotationPreviewProps {
 }
 
 const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose }) => {
+  // Helper to estimate number of pages (A4, rough estimate by item count)
+  const estimatePageCount = () => {
+    // 1st page: header + customer info + 8 items, then 15 items per page
+    const itemsPerFirstPage = 8;
+    const itemsPerOtherPages = 15;
+    const totalItems = quotation.items.length;
+    if (totalItems <= itemsPerFirstPage) return 1;
+    return 1 + Math.ceil((totalItems - itemsPerFirstPage) / itemsPerOtherPages);
+  };
+
+  const pageCount = estimatePageCount();
+
   const handlePrint = () => {
     // Add print styles dynamically
     const printStyles = `
@@ -54,7 +66,6 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose 
     const content = document.querySelector('.printable-content');
     if (!content) return;
 
-    // Create a new window for PDF generation
     const printWindow = window.open('', '_blank', 'width=800,height=600');
     if (!printWindow) {
       alert('Please allow popups to download the PDF');
@@ -191,25 +202,51 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose 
         <div className="printable-content p-4 bg-white" style={{ maxWidth: '100%', margin: '0 auto' }}>
           {/* Header */}
           <div className="text-center mb-4 border-b-2 border-gray-300 pb-3">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">QUOTATION</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">SALES QUOTATION</h1>
             <div className="grid grid-cols-2 gap-4 mt-2">
               <div className="text-left">
-                <h2 className="text-lg font-bold text-blue-600 mb-1">Your Company Name</h2>
-                <p className="text-xs text-gray-600">123 Business Street</p>
-                <p className="text-xs text-gray-600">City, State 12345</p>
-                <p className="text-xs text-gray-600">Phone: (555) 123-4567</p>
-                <p className="text-xs text-gray-600">Email: info@company.com</p>
+                <h2 className="text-lg font-bold text-blue-600 mb-1">{quotation.receiverCompany || 'Your Company Name'}</h2>
+                <p className="text-xs text-gray-600">{quotation.receiverAddress || '123 Business Street'}</p>
+                <p className="text-xs text-gray-600">Phone: 0773145267</p>
+                <p className="text-xs text-gray-600">Email: darshanaelectricals@gmail.com</p>
               </div>
               <div className="text-right">
                 <div className="bg-blue-50 p-3 rounded-lg inline-block">
-                  <p className="text-xs text-gray-600">Quotation No.</p>
-                  <p className="text-sm font-bold text-blue-600">#{quotation.id.slice(-6).toUpperCase()}</p>
-                  <p className="text-xs text-gray-600 mt-1">Date</p>
-                  <p className="font-semibold text-xs">{new Date(quotation.date).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}</p>
+                  <div className="flex items-center justify-between space-x-2">
+                    <span className="text-xs text-gray-600">Quotation No:</span>
+                    <span className="text-sm font-bold text-blue-600">#{
+                      typeof quotation.id === 'string'
+                        ? quotation.id.slice(-6).toUpperCase()
+                        : quotation.id !== undefined && quotation.id !== null
+                          ? String(quotation.id).slice(-6).toUpperCase()
+                          : '------'
+                    }</span>
+                  </div>
+                  <div className="flex items-center justify-between space-x-2 mt-1">
+                    <span className="text-xs text-gray-600">Date:</span>
+                    <span className="font-semibold text-xs">{
+                      (() => {
+                        const dateStr = quotation.date || (quotation as any).createdDate;
+                        if (!dateStr) return '';
+                        const dateObj = new Date(dateStr);
+                        return dateObj.toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        });
+                      })()
+                    }</span>
+                  </div>
+                  {quotation.orderRef && (
+                    <div className="flex items-center justify-between space-x-2 mt-1">
+                      <span className="text-xs text-gray-600">Order Ref:</span>
+                      <span className="font-semibold text-xs">{quotation.orderRef}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between space-x-2 mt-1">
+                    <span className="text-xs text-gray-600">Pages:</span>
+                    <span className="font-semibold text-xs">{pageCount}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -278,7 +315,7 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose 
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-gray-600">Total Discount:</span>
-                    <span className="font-semibold text-red-600">-Rs.{quotation.totalDiscount.toFixed(2)}</span>
+                    <span className="font-semibold text-red-600">Rs.{quotation.totalDiscount.toFixed(2)}</span>
                   </div>
                   <div className="border-t border-gray-300 pt-1">
                     <div className="flex justify-between text-sm">
@@ -294,8 +331,9 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose 
           <div className="border-t-2 border-gray-300 pt-3 mt-4">
             <div className="grid grid-cols-2 gap-4 items-end">
               <div>
-                <p className="text-xs text-gray-600">Thank you for your business!</p>
-                <p className="text-xs text-gray-600">For any queries, contact us at the above details.</p>
+                <p className="text-md text-gray-800">Darshana Electricals</p>
+                <p className="text-md text-gray-800">Diyagama, Kriwathduwa</p>
+                <p className="text-md text-gray-800">darshanaelectricals@gmail.com</p>
               </div>
             </div>
           </div>

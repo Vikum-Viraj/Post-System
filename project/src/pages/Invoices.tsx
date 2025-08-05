@@ -1,18 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axiosInstance from '../config/axiosConfig';
 import { Search, Receipt, Eye, Download, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { Invoice } from '../types';
+import InvoicePreview from '../components/InvoicePreview';
 
-interface InvoicesProps {
-  invoices: Invoice[];
-}
-
-const Invoices: React.FC<InvoicesProps> = ({ invoices }) => {
+const Invoices: React.FC = () => {
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'paid' | 'cancelled'>('all');
+  const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
+
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      try {
+        const response = await axiosInstance.get('/invoice');
+        setInvoices(response.data);
+      } catch (error) {
+        // Optionally handle error
+      }
+    };
+    fetchInvoices();
+  }, []);
 
   const filteredInvoices = invoices.filter(invoice => {
-    const matchesSearch = invoice.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         invoice.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const search = searchTerm.trim().toLowerCase();
+    const customerName = invoice.customerName?.toLowerCase() || '';
+    const idStr = (typeof invoice.id === 'string' ? invoice.id : String(invoice.id)).toLowerCase();
+    const matchesSearch = customerName.includes(search) || idStr.includes(search);
     const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -73,54 +87,27 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices }) => {
         </select>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid md:grid-cols-4 gap-6 mb-8">
+      {/* Stats Cards: Only Cash and Credit */}
+      <div className="grid md:grid-cols-2 gap-6 mb-8">
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Invoices</p>
-              <p className="text-2xl font-bold text-gray-900">{invoices.length}</p>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Receipt className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Pending</p>
-              <p className="text-2xl font-bold text-yellow-600">
-                {invoices.filter(i => i.status === 'pending').length}
+              <p className="text-sm text-gray-600">Cash Invoices</p>
+              <p className="text-2xl font-bold text-emerald-600">
+                {invoices.filter(i => i.type === 'cash').length}
               </p>
             </div>
-            <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <Clock className="h-6 w-6 text-yellow-600" />
+            <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <Receipt className="h-6 w-6 text-emerald-600" />
             </div>
           </div>
         </div>
-
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Paid</p>
-              <p className="text-2xl font-bold text-green-600">
-                {invoices.filter(i => i.status === 'paid').length}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <CheckCircle className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Amount</p>
-              <p className="text-2xl font-bold text-gray-900">
-                Rs.{invoices.reduce((sum, invoice) => sum + invoice.total, 0).toFixed(2)}
+              <p className="text-sm text-gray-600">Credit Invoices</p>
+              <p className="text-2xl font-bold text-orange-600">
+                {invoices.filter(i => i.type === 'credit').length}
               </p>
             </div>
             <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -163,13 +150,25 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices }) => {
               {filteredInvoices.map((invoice) => (
                 <tr key={invoice.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    #{invoice.id.slice(-6).toUpperCase()}
+                    #{typeof invoice.id === 'string' ? invoice.id.slice(-6).toUpperCase() : String(invoice.id).slice(-6).toUpperCase()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {invoice.customerName}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(invoice.date).toLocaleDateString()}
+                    {
+                      (() => {
+                        const dateStr = invoice.date || (invoice as any).createdDate;
+                        if (!dateStr) return '';
+                        const dateObj = new Date(dateStr);
+                        if (isNaN(dateObj.getTime())) return '';
+                        return dateObj.toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        });
+                      })()
+                    }
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {invoice.items.length}
@@ -185,7 +184,11 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices }) => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end space-x-2">
-                      <button className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors duration-200">
+                      <button
+                        className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors duration-200"
+                        onClick={() => setPreviewInvoice(invoice)}
+                        title="Preview Invoice"
+                      >
                         <Eye className="h-5 w-5" />
                       </button>
                       <button className="p-1 text-orange-500 hover:text-orange-700 hover:bg-orange-100 rounded transition-colors duration-200">
@@ -212,7 +215,11 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices }) => {
           </p>
         </div>
       )}
-    </div>
+    {/* Invoice Preview Modal */}
+    {previewInvoice && (
+      <InvoicePreview invoice={previewInvoice} onClose={() => setPreviewInvoice(null)} />
+    )}
+  </div>
   );
 };
 
