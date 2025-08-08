@@ -22,6 +22,9 @@ const Invoices: React.FC = () => {
     fetchInvoices();
   }, []);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 6;
+
   const filteredInvoices = invoices.filter(invoice => {
     const search = searchTerm.trim().toLowerCase();
     const customerName = invoice.customerName?.toLowerCase() || '';
@@ -30,6 +33,10 @@ const Invoices: React.FC = () => {
     const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredInvoices.length / pageSize);
+  const paginatedInvoices = filteredInvoices.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const getStatusIcon = (status: Invoice['status']) => {
     switch (status) {
@@ -147,7 +154,7 @@ const Invoices: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredInvoices.map((invoice) => (
+              {paginatedInvoices.map((invoice) => (
                 <tr key={invoice.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     #{typeof invoice.id === 'string' ? invoice.id.slice(-6).toUpperCase() : String(invoice.id).slice(-6).toUpperCase()}
@@ -202,6 +209,35 @@ const Invoices: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-end items-center space-x-2 mt-2 px-2 pb-2">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+            className={`px-3 py-1 rounded border ${currentPage === 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+          >
+            Prev
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => (
+            <button
+              key={i + 1}
+              onClick={() => setCurrentPage(i + 1)}
+              className={`px-3 py-1 rounded border ${currentPage === i + 1 ? 'bg-orange-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+            >
+              {i + 1}
+            </button>
+          ))}
+          <button
+            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
+            className={`px-3 py-1 rounded border ${currentPage === totalPages ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       {filteredInvoices.length === 0 && (
         <div className="text-center py-12">

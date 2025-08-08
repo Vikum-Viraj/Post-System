@@ -42,6 +42,38 @@ const Quotations: React.FC = () => {
   const [previewQuotation, setPreviewQuotation] = useState<Quotation | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: keyof Quotation; direction: 'ascending' | 'descending' } | null>(null);
   const [isSavingInvoice, setIsSavingInvoice] = useState(false);
+  const [noStockModal, setNoStockModal] = useState<{
+    open: boolean;
+    message: string;
+    payload: any;
+    payment: 'cash' | 'credit';
+    details?: Array<{ productName: string; requestedQty: number; availableQty: number }>;
+  } | null>(null);
+
+  // Handler for confirming no stock modal
+  const handleNoStockProceed = async () => {
+    if (!noStockModal) return;
+    setIsSavingInvoice(true);
+    try {
+      const response = await axiosInstance.post('/invoice/noStock', noStockModal.payload);
+      if (response.status === 200 || response.status === 201) {
+        toast.success(noStockModal.payment === 'cash' ? 'Cash Invoice Created!' : 'Credit Invoice Created!');
+      } else {
+        toast.error(response.data.message);
+      }
+    } catch (err: any) {
+      let errMsg = 'Failed to create invoice.';
+      if (err.response && err.response.data && (err.response.data.message || err.response.data.error)) {
+        errMsg = err.response.data.message || err.response.data.error;
+      } else if (err.message) {
+        errMsg = err.error;
+      }
+      toast.error(errMsg);
+    } finally {
+      setIsSavingInvoice(false);
+      setNoStockModal(null);
+    }
+  };
 
   const filteredQuotations = quotations.filter(quotation => {
     const search = searchTerm.trim().toLowerCase();
@@ -57,19 +89,20 @@ const Quotations: React.FC = () => {
     );
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 6;
+
   const sortedQuotations = React.useMemo(() => {
     let sortableItems = [...filteredQuotations];
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
         let aValue: any = a[sortConfig.key];
         let bValue: any = b[sortConfig.key];
-        
         // Handle special cases for complex properties
         if (sortConfig.key === 'items') {
           aValue = a.items.length;
           bValue = b.items.length;
         }
-        
         if (aValue < bValue) {
           return sortConfig.direction === 'ascending' ? -1 : 1;
         }
@@ -81,6 +114,10 @@ const Quotations: React.FC = () => {
     }
     return sortableItems;
   }, [filteredQuotations, sortConfig]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(sortedQuotations.length / pageSize);
+  const paginatedQuotations = sortedQuotations.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const requestSort = (key: keyof Quotation) => {
     let direction: 'ascending' | 'descending' = 'ascending';
@@ -108,14 +145,41 @@ const Quotations: React.FC = () => {
     const { id, date, createdDate, ...rest } = quotation as any;
     const payload = { ...rest, payment };
     try {
-      const response = await axiosInstance.post('/invoice', payload);
-      if (response.status === 200 || response.status === 201) {
-        toast.success(payment === 'cash' ? 'Cash Invoice Created!' : 'Credit Invoice Created!');
-      } else {
-        toast.error('Failed to create invoice.');
+      let response;
+      try {
+        response = await axiosInstance.post('/invoice', payload);
+      } catch (error: any) {
+        // Check for no stock error
+        let errorMsg = 'Failed to create invoice.';
+        let outOfStockDetails = undefined;
+        if (error.response && error.response.data) {
+          if (error.response.data.details && Array.isArray(error.response.data.details)) {
+            outOfStockDetails = error.response.data.details;
+          }
+          if (error.response.data.message || error.response.data.error) {
+            errorMsg = error.response.data.message || error.response.data.error;
+          }
+        } else if (error.message) {
+          errorMsg = error.error;
+        }
+        // If error message indicates no stock, prompt user
+        if (
+          (errorMsg.toLowerCase().includes('no stock') || errorMsg.toLowerCase().includes('insufficient stock'))
+        ) {
+          setNoStockModal({ open: true, message: errorMsg, payload, payment, details: outOfStockDetails });
+          setIsSavingInvoice(false);
+          return;
+        } else {
+          toast.error(errorMsg);
+          setIsSavingInvoice(false);
+          return;
+        }
       }
-    } catch (error) {
-      toast.error('Failed to create invoice.');
+      if (response && (response.status === 200 || response.status === 201)) {
+        toast.success(payment === 'cash' ? 'Cash Invoice Created!' : 'Credit Invoice Created!');
+      } else if (response) {
+        toast.error(response.data.message);
+      }
     } finally {
       setIsSavingInvoice(false);
     }
@@ -123,7 +187,7 @@ const Quotations: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <ToastContainer position="top-right" autoClose={2000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover aria-label="Invoice notification" />
+      <ToastContainer position="top-right" autoClose={2500} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover aria-label="Invoice notification" />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
         <div className="mb-4 sm:mb-0">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Quotations</h1>
@@ -232,7 +296,7 @@ const Quotations: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {sortedQuotations.map((quotation) => (
+              {paginatedQuotations.map((quotation) => (
                 <tr key={quotation.id} className="hover:bg-gray-50">
                   <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     #{
@@ -309,6 +373,35 @@ const Quotations: React.FC = () => {
         </div>
       </div>
 
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-end items-center space-x-2 mt-2 px-2 pb-2">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+            className={`px-3 py-1 rounded border ${currentPage === 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+          >
+            Prev
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => (
+            <button
+              key={i + 1}
+              onClick={() => setCurrentPage(i + 1)}
+              className={`px-3 py-1 rounded border ${currentPage === i + 1 ? 'bg-emerald-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+            >
+              {i + 1}
+            </button>
+          ))}
+          <button
+            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
+            className={`px-3 py-1 rounded border ${currentPage === totalPages ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+          >
+            Next
+          </button>
+        </div>
+      )}
+
       {sortedQuotations.length === 0 && (
         <div className="text-center py-12 bg-white rounded-lg shadow">
           <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
@@ -316,6 +409,51 @@ const Quotations: React.FC = () => {
           <p className="text-sm text-gray-600 max-w-md mx-auto">
             {searchTerm ? 'Try adjusting your search terms' : 'Create your first quotation to get started'}
           </p>
+        </div>
+      )}
+
+
+      {/* No Stock Modal Card */}
+      {noStockModal && noStockModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border-2 border-orange-400">
+            <div className="flex items-center mb-4">
+              <span className="inline-block bg-orange-100 text-orange-600 rounded-full p-2 mr-3">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" /></svg>
+              </span>
+              <h2 className="text-lg font-bold text-orange-600">Insufficient Stock</h2>
+            </div>
+            <div className="mb-2 text-gray-700 whitespace-pre-line">{noStockModal.message}</div>
+            {noStockModal.details && Array.isArray(noStockModal.details) && noStockModal.details.length > 0 && (
+              <div className="mb-4">
+                <div className="font-semibold text-gray-800 mb-1">Out of Stock Items:</div>
+                <ul className="list-disc list-inside text-sm text-gray-700">
+                  {noStockModal.details.map((item: any, idx: number) => (
+                    <li key={idx}>
+                      <span className="font-medium">{item.productName}</span> &mdash; Requested: {item.requestedQty}, Available: {item.availableQty}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="mb-4 text-gray-600">There is no stock for some product(s). Would you like to proceed and create the invoice anyway?</div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100"
+                onClick={() => setNoStockModal(null)}
+                disabled={isSavingInvoice}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                onClick={handleNoStockProceed}
+                disabled={isSavingInvoice}
+              >
+                Proceed Anyway
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

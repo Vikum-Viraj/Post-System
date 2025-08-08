@@ -168,7 +168,6 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onClose }) => 
                 <h2 className="text-lg font-bold text-blue-600 mb-1">{invoice.customerName}</h2>
                 <p className="text-xs text-gray-600">{invoice.customerEmail}</p>
                 <p className="text-xs text-gray-600">{invoice.customerPhone}</p>
-                <p className="text-xs text-gray-600 font-bold">Payment: <span className={invoice.type === 'cash' ? 'text-emerald-600' : 'text-orange-600'}>{invoice.type === 'cash' ? 'Cash' : 'Credit'}</span></p>
               </div>
               <div className="text-right">
                 <div className="bg-blue-50 p-3 rounded-lg inline-block">
@@ -207,6 +206,12 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onClose }) => 
                   <div className="flex items-center justify-between space-x-2 mt-1">
                     <span className="text-xs text-gray-600">Pages:</span>
                     <span className="font-semibold text-xs">{pageCount}</span>
+                  </div>
+                  <div className="flex items-center justify-between space-x-2 mt-1">
+                    <span className="text-xs text-gray-600">Payment:</span>
+                    <span className={invoice.type === 'cash' ? 'font-bold text-emerald-600 text-xs' : 'font-bold text-orange-600 text-xs'}>
+                      {invoice.type === 'cash' ? 'Cash' : 'Credit'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -280,7 +285,7 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onClose }) => 
             <div className="grid grid-cols-2 gap-4 items-end">
               <div>
                 <p className="text-md text-gray-800">Darshana Electricals</p>
-                <p className="text-md text-gray-800">Diyagama, Kriwathduwa</p>
+                <p className="text-md text-gray-800">No 76/2B Diyagama,Kiriwathuduwa</p>
                 <p className="text-md text-gray-800">darshanaelectricals@gmail.com</p>
               </div>
             </div>

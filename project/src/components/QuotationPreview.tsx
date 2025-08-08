@@ -332,7 +332,7 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose 
             <div className="grid grid-cols-2 gap-4 items-end">
               <div>
                 <p className="text-md text-gray-800">Darshana Electricals</p>
-                <p className="text-md text-gray-800">Diyagama, Kriwathduwa</p>
+                <p className="text-md text-gray-800">No 76/2B Diyagama,Kiriwathuduwa</p>
                 <p className="text-md text-gray-800">darshanaelectricals@gmail.com</p>
               </div>
             </div>
