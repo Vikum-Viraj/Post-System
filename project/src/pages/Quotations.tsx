@@ -40,8 +40,10 @@ const Quotations: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [previewQuotation, setPreviewQuotation] = useState<Quotation | null>(null);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Quotation; direction: 'ascending' | 'descending' } | null>(null);
+  type QuotationSortKey = keyof Quotation | 'createdDate';
+  const [sortConfig, setSortConfig] = useState<{ key: QuotationSortKey; direction: 'ascending' | 'descending' } | null>({ key: 'createdDate', direction: 'descending' });
   const [isSavingInvoice, setIsSavingInvoice] = useState(false);
+  const [savingInvoiceType, setSavingInvoiceType] = useState<'cash' | 'credit' | null>(null);
   const [noStockModal, setNoStockModal] = useState<{
     open: boolean;
     message: string;
@@ -96,12 +98,21 @@ const Quotations: React.FC = () => {
     let sortableItems = [...filteredQuotations];
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
-        let aValue: any = a[sortConfig.key];
-        let bValue: any = b[sortConfig.key];
-        // Handle special cases for complex properties
-        if (sortConfig.key === 'items') {
-          aValue = a.items.length;
-          bValue = b.items.length;
+        let aValue: any;
+        let bValue: any;
+        if (sortConfig.key === 'createdDate') {
+          // Use type assertion to access createdDate if present
+          aValue = (a as any).createdDate || a.date;
+          bValue = (b as any).createdDate || b.date;
+          aValue = aValue ? new Date(aValue).getTime() : 0;
+          bValue = bValue ? new Date(bValue).getTime() : 0;
+        } else {
+          aValue = a[sortConfig.key as keyof Quotation];
+          bValue = b[sortConfig.key as keyof Quotation];
+          if (sortConfig.key === 'items') {
+            aValue = a.items.length;
+            bValue = b.items.length;
+          }
         }
         if (aValue < bValue) {
           return sortConfig.direction === 'ascending' ? -1 : 1;
@@ -119,7 +130,7 @@ const Quotations: React.FC = () => {
   const totalPages = Math.ceil(sortedQuotations.length / pageSize);
   const paginatedQuotations = sortedQuotations.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  const requestSort = (key: keyof Quotation) => {
+  const requestSort = (key: QuotationSortKey) => {
     let direction: 'ascending' | 'descending' = 'ascending';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
       direction = 'descending';
@@ -141,6 +152,7 @@ const Quotations: React.FC = () => {
 
   const handleInvoice = async (quotation: Quotation, payment: 'cash' | 'credit') => {
     setIsSavingInvoice(true);
+    setSavingInvoiceType(payment);
     // Remove id and date/createdDate from payload
     const { id, date, createdDate, ...rest } = quotation as any;
     const payload = { ...rest, payment };
@@ -183,6 +195,7 @@ const Quotations: React.FC = () => {
     } finally {
       setIsSavingInvoice(false);
     }
+    setSavingInvoiceType(null);
   };
 
   return (
@@ -251,11 +264,11 @@ const Quotations: React.FC = () => {
                 <th 
                   scope="col" 
                   className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => requestSort('date')}
+                  onClick={() => requestSort('createdDate')}
                 >
                   <div className="flex items-center">
                     Date
-                    {sortConfig?.key === 'date' && (
+                    {sortConfig?.key === 'createdDate' && (
                       <span className="ml-1">
                         {sortConfig.direction === 'ascending' ? '↑' : '↓'}
                       </span>
@@ -345,10 +358,10 @@ const Quotations: React.FC = () => {
                       <button
                         onClick={() => handleInvoice(quotation, 'cash')}
                         className="relative p-1 rounded bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:text-emerald-800 transition-colors duration-200 group"
-                        title="Cash Invoice"
-                        disabled={isSavingInvoice}
+                        title="Create Cash Invoice"
+                        disabled={isSavingInvoice && savingInvoiceType === 'cash'}
                       >
-                        {isSavingInvoice ? (
+                        {isSavingInvoice && savingInvoiceType === 'cash' ? (
                           <span className="loader mr-1" style={{ width: 16, height: 16, display: 'inline-block', border: '2px solid #10b981', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
                         ) : null}
                         <ArrowRight className="h-5 w-5" />
@@ -356,10 +369,10 @@ const Quotations: React.FC = () => {
                       <button
                         onClick={() => handleInvoice(quotation, 'credit')}
                         className="relative p-1 rounded bg-orange-100 text-orange-600 hover:bg-orange-200 hover:text-orange-800 transition-colors duration-200 group"
-                        title="Credit Invoice"
-                        disabled={isSavingInvoice}
+                        title="Create Credit Invoice"
+                        disabled={isSavingInvoice && savingInvoiceType === 'credit'}
                       >
-                        {isSavingInvoice ? (
+                        {isSavingInvoice && savingInvoiceType === 'credit' ? (
                           <span className="loader mr-1" style={{ width: 16, height: 16, display: 'inline-block', border: '2px solid #fb923c', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
                         ) : null}
                         <ArrowRight className="h-5 w-5" />

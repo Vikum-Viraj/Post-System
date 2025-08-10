@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../config/axiosConfig';
 import { Search, Receipt, Eye, Download, Clock, CheckCircle, XCircle } from 'lucide-react';
-import { Invoice } from '../types';
+import { Invoice as BaseInvoice } from '../types';
+
+type Invoice = BaseInvoice & {
+  payment?: string;
+};
 import InvoicePreview from '../components/InvoicePreview';
 
 const Invoices: React.FC = () => {
@@ -22,6 +26,10 @@ const Invoices: React.FC = () => {
     fetchInvoices();
   }, []);
 
+  // Sorting logic
+  type InvoiceSortKey = keyof Invoice | 'createdDate';
+  const [sortConfig, setSortConfig] = useState<{ key: InvoiceSortKey; direction: 'ascending' | 'descending' }>({ key: 'createdDate', direction: 'descending' });
+
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 6;
 
@@ -34,30 +42,50 @@ const Invoices: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredInvoices.length / pageSize);
-  const paginatedInvoices = filteredInvoices.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-
-  const getStatusIcon = (status: Invoice['status']) => {
-    switch (status) {
-      case 'pending':
-        return <Clock className="h-4 w-4 text-yellow-600" />;
-      case 'paid':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'cancelled':
-        return <XCircle className="h-4 w-4 text-red-600" />;
+  const sortedInvoices = React.useMemo(() => {
+    let sortableItems = [...filteredInvoices];
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
+        if (sortConfig.key === 'createdDate') {
+          aValue = (a as any).createdDate || a.date;
+          bValue = (b as any).createdDate || b.date;
+          aValue = aValue ? new Date(aValue).getTime() : 0;
+          bValue = bValue ? new Date(bValue).getTime() : 0;
+        } else {
+          aValue = a[sortConfig.key as keyof Invoice];
+          bValue = b[sortConfig.key as keyof Invoice];
+        }
+        if (aValue < bValue) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      });
     }
+    return sortableItems;
+  }, [filteredInvoices, sortConfig]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(sortedInvoices.length / pageSize);
+  const paginatedInvoices = sortedInvoices.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const requestSort = (key: InvoiceSortKey) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
   };
 
-  const getStatusColor = (status: Invoice['status']) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'paid':
-        return 'bg-green-100 text-green-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-    }
+  // Payment type color
+  const getPaymentColor = (payment: string) => {
+    if (payment === 'cash') return 'bg-emerald-100 text-emerald-800';
+    if (payment === 'credit') return 'bg-orange-100 text-orange-800';
+    return 'bg-gray-100 text-gray-800';
   };
 
   return (
@@ -95,7 +123,7 @@ const Invoices: React.FC = () => {
       </div>
 
       {/* Stats Cards: Only Cash and Credit */}
-      <div className="grid md:grid-cols-2 gap-6 mb-8">
+      {/* <div className="grid md:grid-cols-2 gap-6 mb-8">
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -122,7 +150,7 @@ const Invoices: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Invoices Table */}
       <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
@@ -136,14 +164,24 @@ const Invoices: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Customer
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                  onClick={() => requestSort('createdDate')}
+                >
+                  <div className="flex items-center">
+                    Date
+                    {sortConfig?.key === 'createdDate' && (
+                      <span className="ml-1">
+                        {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Items
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  Payment
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Total
@@ -181,9 +219,8 @@ const Invoices: React.FC = () => {
                     {invoice.items.length}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(invoice.status)}`}>
-                      {getStatusIcon(invoice.status)}
-                      <span className="ml-1 capitalize">{invoice.status}</span>
+                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getPaymentColor(invoice.payment ?? '')}`}>
+                      <span className="capitalize">{invoice.payment === 'cash' ? 'Cash' : invoice.payment === 'credit' ? 'Credit' : invoice.payment}</span>
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">

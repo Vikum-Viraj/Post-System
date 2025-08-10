@@ -18,6 +18,7 @@ const Products: React.FC = () => {
     mrp: '',
   });
   const [editProduct, setEditProduct] = useState<Product | null>(null);
+  // Remove delete modal state
 
   // Fetch products from backend
   const fetchProducts = async () => {
@@ -40,8 +41,31 @@ const Products: React.FC = () => {
     product.code.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleSaveEditedProduct = (updatedProduct: Product) => {
-    // Optionally update product in backend and then refetch
+  // Pagination logic
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 7;
+  const totalPages = Math.ceil(filteredProducts.length / pageSize);
+  const paginatedProducts = filteredProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const handleSaveEditedProduct = async (updatedProduct: Product) => {
+    // Update product in backend
+    try {
+      const payload = {
+        name: updatedProduct.name,
+        code: updatedProduct.code,
+        quantity: updatedProduct.quantity,
+        mrp: updatedProduct.mrp,
+      };
+      const response = await axiosInstance.put(`/product/${updatedProduct.id}`, payload);
+      if (response.status === 200) {
+        toast.success('Product updated successfully!');
+      } else {
+        toast.error('Failed to update product!');
+      }
+    } catch (error) {
+      toast.error('Error updating product!');
+      console.error('Error updating product:', error);
+    }
     setEditProduct(null);
     fetchProducts();
   };
@@ -81,6 +105,21 @@ const Products: React.FC = () => {
       ...prev,
       [name]: name === 'quantity' || name === 'mrp' ? Number(value) : value
     }));
+  };
+
+  const handleDeleteProduct = async (product: Product) => {
+    try {
+      const response = await axiosInstance.delete(`/product/${product.id}`);
+      if (response.status === 200) {
+        toast.success('Product deleted successfully!');
+        fetchProducts();
+      } else {
+        toast.error('Failed to delete product!');
+      }
+    } catch (error) {
+      toast.error('Error deleting product!');
+      console.error('Error deleting product:', error);
+    }
   };
 
   return (
@@ -168,7 +207,7 @@ const Products: React.FC = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filteredProducts.map((product) => (
+            {paginatedProducts.map((product) => (
               <tr key={product.id}>
                 <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{product.name}</td>
                 <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700">{product.code}</td>
@@ -180,7 +219,10 @@ const Products: React.FC = () => {
                     onClick={() => setEditProduct(product)}>
                     <Edit className="h-4 w-4 inline" />
                   </button>
-                  <button className="text-red-600 hover:text-red-900">
+                  <button
+                    className="text-red-600 hover:text-red-900"
+                    onClick={() => handleDeleteProduct(product)}
+                  >
                     <Trash2 className="h-4 w-4 inline" />
                   </button>
                 </td>
@@ -195,6 +237,34 @@ const Products: React.FC = () => {
             <p className="text-gray-600">
               {searchTerm ? 'Try adjusting your search terms' : 'Get started by adding your first product'}
             </p>
+          </div>
+        )}
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex justify-end items-center space-x-2 mt-2 px-2 pb-2">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className={`px-3 py-1 rounded border ${currentPage === 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+            >
+              Prev
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button
+                key={i + 1}
+                onClick={() => setCurrentPage(i + 1)}
+                className={`px-3 py-1 rounded border ${currentPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+              >
+                {i + 1}
+              </button>
+            ))}
+            <button
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className={`px-3 py-1 rounded border ${currentPage === totalPages ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+            >
+              Next
+            </button>
           </div>
         )}
       </div>

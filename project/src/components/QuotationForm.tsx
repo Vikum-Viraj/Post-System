@@ -224,7 +224,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
             {/* Customer Information */}
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Information</h3>
-            <div className="grid md:grid-cols-4 gap-4">
+            <div className="grid md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Customer Name *
@@ -284,7 +284,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
                     placeholder="Enter receiver company name"
                   />
                 </div>
-                <div className="md:col-span-2">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Receiver Address</label>
                   <input
                     type="text"

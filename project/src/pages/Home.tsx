@@ -42,7 +42,7 @@ const Home: React.FC = () => {
       </div>
 
       {/* Stats Section */}
-      <div className="bg-white rounded-xl shadow-lg p-8 mb-12">
+      {/* <div className="bg-white rounded-xl shadow-lg p-8 mb-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
           System Overview
         </h2>
@@ -69,7 +69,7 @@ const Home: React.FC = () => {
             color="purple"
           />
         </div>
-      </div>
+      </div> */}
 
       {/* Quick Actions */}
       <div className="bg-gradient-to-r from-blue-600 to-emerald-600 rounded-xl p-8 text-white text-center">
