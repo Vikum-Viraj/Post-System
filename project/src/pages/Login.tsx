@@ -116,12 +116,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </p>
         </div>
 
-        {/* Demo credentials */}
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+        {/* <div className="mt-6 p-4 bg-blue-50 rounded-lg">
           <h3 className="text-sm font-semibold text-blue-900 mb-2">Demo Credentials:</h3>
           <p className="text-sm text-blue-700">Email: demo@company.com</p>
           <p className="text-sm text-blue-700">Password: demo123</p>
-        </div>
+        </div> */}
       </div>
     </div>
   );

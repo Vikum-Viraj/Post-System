@@ -47,7 +47,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
     productCode: '',
     quantity: 1,
     discount: 0,
-    discountPercent: '', // as string for easier input
+    discountPercent: '',
   });
   const [totalDiscount, setTotalDiscount] = useState(0);
   const [totalDiscountPercent, setTotalDiscountPercent] = useState('');
@@ -94,12 +94,14 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
 
   // Validate product code when it changes
   useEffect(() => {
-    if (currentItem.productCode && !selectedProduct) {
+    if (currentItem.productCode && !selectedProduct && !searchTerm) {
+      setProductError('Product not found');
+    } else if (currentItem.productCode && !selectedProduct && searchTerm && !isLoading && searchResults.length === 0) {
       setProductError('Product not found');
     } else {
       setProductError('');
     }
-  }, [currentItem.productCode, selectedProduct]);
+  }, [currentItem.productCode, selectedProduct, searchTerm, isLoading, searchResults]);
 
   // Add item to quotation
   const addItem = () => {
@@ -470,7 +472,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
                           </td>
                           <td className="px-4 py-3 text-sm text-right text-gray-700">Rs.{item.mrp.toFixed(2)}</td>
                           <td className="px-4 py-3 text-sm text-right text-gray-700">{item.quantity}</td>
-                          <td className="px-4 py-3 text-sm text-right text-gray-700">-Rs.{item.discount.toFixed(2)}</td>
+                          <td className="px-4 py-3 text-sm text-right text-gray-700">Rs.{item.discount.toFixed(2)}</td>
                           <td className="px-4 py-3 text-sm text-right font-semibold text-emerald-600">Rs.{item.total.toFixed(2)}</td>
                           <td className="px-4 py-3 text-sm text-right">
                             <button
@@ -501,7 +503,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
                   </div>
                   <div className="flex justify-between">
                     <span className="font-medium">Item Discounts:</span>
-                    <span className="text-red-600">-Rs.{itemDiscounts.toFixed(2)}</span>
+                    <span className="text-red-600">Rs.{itemDiscounts.toFixed(2)}</span>
                   </div>
                   <div className="flex flex-col md:flex-row md:items-center md:space-x-4 pt-2">
                     {/* <div className="flex-1 flex items-center space-x-2">
@@ -533,7 +535,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
                           let percent = e.target.value;
                           if (percent === '' || (parseFloat(percent) >= 0 && parseFloat(percent) <= 100)) {
                             setTotalDiscountPercent(percent);
-                            setTotalDiscount(percent ? ((subtotal - itemDiscounts) * (parseFloat(percent) / 100)) : totalDiscount);
+                            setTotalDiscount(percent && percent !== '0' ? ((subtotal - itemDiscounts) * (parseFloat(percent) / 100)) : 0);
                           }
                         }}
                         className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"

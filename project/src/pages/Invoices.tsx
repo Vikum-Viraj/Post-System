@@ -109,17 +109,6 @@ const Invoices: React.FC = () => {
             className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
           />
         </div>
-        
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
-          className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-        >
-          <option value="all">All Status</option>
-          <option value="pending">Pending</option>
-          <option value="paid">Paid</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
       </div>
 
       {/* Stats Cards: Only Cash and Credit */}
@@ -234,9 +223,6 @@ const Invoices: React.FC = () => {
                         title="Preview Invoice"
                       >
                         <Eye className="h-5 w-5" />
-                      </button>
-                      <button className="p-1 text-orange-500 hover:text-orange-700 hover:bg-orange-100 rounded transition-colors duration-200">
-                        <Download className="h-5 w-5" />
                       </button>
                     </div>
                   </td>
