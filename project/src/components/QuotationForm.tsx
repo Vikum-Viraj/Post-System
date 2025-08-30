@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ToastContainer, toast } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { X, Plus, Search, Trash2 } from 'lucide-react';
-import { Quotation } from '../types';
 import axiosInstance from '../config/axiosConfig';
 
 interface Product {
@@ -13,7 +12,7 @@ interface Product {
   mrp: any;
   description?: string;
 }
-                                        
+
 interface QuotationItem {
   productId: string;
   productCode: string;
@@ -28,11 +27,10 @@ interface QuotationItem {
 
 interface QuotationFormProps {
   products: Product[];
-  onSubmit: (quotation: Omit<Quotation, 'id' | 'date'>) => void;
   onClose: () => void;
 }
 
-const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClose }) => {
+const QuotationForm: React.FC<QuotationFormProps> = ({ products, onClose }) => {
   const [customerData, setCustomerData] = useState({
     name: '',
     email: '',
@@ -41,7 +39,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
     receiverCompany: '',
     receiverAddress: '',
   });
-  
+
   const [items, setItems] = useState<QuotationItem[]>([]);
   const [currentItem, setCurrentItem] = useState({
     productCode: '',
@@ -160,7 +158,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
   const total = subtotal - itemDiscounts - totalDiscount;
 
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerData.name) {
       alert('Please fill in all required customer fields');
@@ -183,21 +181,24 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
       total,
       orderRef: customerData.orderRef,
     };
-
-    // Integrate API call to create quotation
-    (async () => {
-      try {
-        const response = await axiosInstance.post('/quotation', quotationData);
-        toast.success('Quotation created successfully!');
-        onSubmit(response.data);
-        console.log('Quotation submitted:', response.data);
-      } catch (error) {
-        toast.error('Failed to create quotation. Please try again.');
-        console.error('Quotation creation error:', error);
-      }
-    })();
+    await handelSubmit(quotationData);
   };
 
+  const handelSubmit = async (quotationData:any) => {
+    try {
+      const response = await axiosInstance.post('/quotation', quotationData);
+      if (response.status === 200 || response.status === 201) {
+        toast.success('Quotation created successfully!');
+        console.log('Quotation submitted:', response.data);
+        onClose();
+      } else {
+        toast.error('Failed to create quotation. Please try again.');
+      }
+    } catch (error) {
+      toast.error('Failed to create quotation. Please try again.');
+      console.error('Quotation creation error:', error);
+    }
+  }
   // Handle Enter key press
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && selectedProduct) {
@@ -208,7 +209,6 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <ToastContainer position="top-right" autoClose={2000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover aria-label="Quotation notification" />
       <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
@@ -226,7 +226,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
             {/* Customer Information */}
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Information</h3>
-            <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Customer Name *
@@ -303,7 +303,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
             {/* Add Items Section */}
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Items</h3>
-              
+
               {/* Product Search */}
               <div className="relative mb-4">
                 <div className="flex items-center">
@@ -320,7 +320,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                   />
                 </div>
-                
+
                 {productError && (
                   <p className="mt-1 text-sm text-red-600">{productError}</p>
                 )}
@@ -336,12 +336,12 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
                           key={product.id}
                           type="button"
                           onClick={() => {
-                          setCurrentItem({ 
-                            productCode: product.code,
-                            quantity: 1,
-                            discount: 0,
-                            discountPercent: ''
-                          });
+                            setCurrentItem({
+                              productCode: product.code,
+                              quantity: 1,
+                              discount: 0,
+                              discountPercent: ''
+                            });
                             setSearchTerm(product.code);
                           }}
                           className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
@@ -371,9 +371,9 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
                         type="number"
                         min="1"
                         value={currentItem.quantity}
-                        onChange={(e) => setCurrentItem({ 
-                          ...currentItem, 
-                          quantity: Math.max(1, Number(e.target.value)) 
+                        onChange={(e) => setCurrentItem({
+                          ...currentItem,
+                          quantity: Math.max(1, Number(e.target.value))
                         })}
                         onKeyDown={handleKeyDown}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
@@ -574,7 +574,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onSubmit, onClo
       </div>
     </div>
   );
-  
+
 };
 
 export default QuotationForm;

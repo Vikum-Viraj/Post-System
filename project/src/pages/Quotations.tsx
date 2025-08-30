@@ -16,7 +16,7 @@ const Quotations: React.FC = () => {
     // Fetch quotations
     const fetchQuotations = async () => {
       try {
-        const response = await axiosInstance.get('/quotation');
+        const response = await axiosInstance.get('/quotations');
         setQuotations(response.data);
       } catch (error) {
         alert('Failed to fetch quotations');
@@ -474,7 +474,6 @@ const Quotations: React.FC = () => {
       {showForm && (
         <QuotationForm
           products={products}
-          onSubmit={handleAddQuotation}
           onClose={() => setShowForm(false)}
         />
       )}

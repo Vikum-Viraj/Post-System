@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../config/axiosConfig';
-import { Search, Receipt, Eye, Download, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Search, Receipt, Eye } from 'lucide-react';
 import { Invoice as BaseInvoice } from '../types';
 
 type Invoice = BaseInvoice & {
@@ -17,7 +17,7 @@ const Invoices: React.FC = () => {
   useEffect(() => {
     const fetchInvoices = async () => {
       try {
-        const response = await axiosInstance.get('/invoice');
+        const response = await axiosInstance.get('/invoices');
         setInvoices(response.data);
       } catch (error) {
         // Optionally handle error
