@@ -14,6 +14,7 @@ function App() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Add loading state
 
   // Load data from localStorage on app start
   useEffect(() => {
@@ -26,6 +27,8 @@ function App() {
     if (savedQuotations) setQuotations(JSON.parse(savedQuotations));
     if (savedInvoices) setInvoices(JSON.parse(savedInvoices));
     if (authStatus) setIsAuthenticated(JSON.parse(authStatus));
+    
+    setIsLoading(false); // Set loading to false after checking auth
   }, []);
 
   // Save data to localStorage whenever state changes
@@ -80,6 +83,18 @@ function App() {
     setIsAuthenticated(authStatus);
     localStorage.setItem('pos-auth', JSON.stringify(authStatus));
   };
+
+  // Show loading while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Router>
