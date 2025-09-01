@@ -140,11 +140,13 @@ const Quotations: React.FC = () => {
 
   const handleAddQuotation = async (quotationData: Omit<Quotation, 'id' | 'date'>) => {
     // After adding, fetch all quotations again to ensure the list is up to date
+    // We don't use quotationData here since we fetch fresh data from server
     setShowForm(false);
     try {
-      const response = await axiosInstance.get('/quotation');
+      const response = await axiosInstance.get('/quotations');
       setQuotations(response.data);
     } catch (error) {
+      console.error('Error fetching quotations:', error);
       // fallback: do nothing, keep old list
     }
   };
@@ -475,6 +477,7 @@ const Quotations: React.FC = () => {
         <QuotationForm
           products={products}
           onClose={() => setShowForm(false)}
+          onSubmit={handleAddQuotation}
         />
       )}
 

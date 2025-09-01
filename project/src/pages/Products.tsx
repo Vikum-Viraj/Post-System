@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { Plus, Search, Package, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, Package, Edit, Trash2, Upload } from 'lucide-react';
 import { Product } from '../types';
 import EditProductModal from '../components/EditProduct';
+import UploadCsv from '../components/UploadCsv';
 import axiosInstance from '../config/axiosConfig';
 
 
 const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [showUploadCsv, setShowUploadCsv] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     name: '',
@@ -41,11 +43,30 @@ const Products: React.FC = () => {
     product.code.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Sort products to show newest first (assuming products have an id that increases with time)
+  // or if there's a createdAt/dateAdded field, we can sort by that
+  const sortedProducts = filteredProducts.sort((a, b) => {
+    // If products have a numeric id, sort by id descending (newest first)
+    if (typeof a.id === 'number' && typeof b.id === 'number') {
+      return b.id - a.id;
+    }
+    // If products have string ids, try to convert and compare
+    if (a.id && b.id) {
+      const aId = parseInt(String(a.id));
+      const bId = parseInt(String(b.id));
+      if (!isNaN(aId) && !isNaN(bId)) {
+        return bId - aId;
+      }
+    }
+    // Fallback: sort by name if ids are not comparable
+    return a.name.localeCompare(b.name);
+  });
+
   // Pagination logic
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 7;
-  const totalPages = Math.ceil(filteredProducts.length / pageSize);
-  const paginatedProducts = filteredProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const totalPages = Math.ceil(sortedProducts.length / pageSize);
+  const paginatedProducts = sortedProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const handleSaveEditedProduct = async (updatedProduct: Product) => {
     // Update product in backend
@@ -84,6 +105,7 @@ const Products: React.FC = () => {
         if (response.status === 200) {
           setShowForm(false);
           setFormData({ name: '', code: '', quantity: '', mrp: '' });
+          setCurrentPage(1); // Reset to first page to show the new product
           fetchProducts();
           toast.success('Product added successfully!');
         }
@@ -122,6 +144,12 @@ const Products: React.FC = () => {
     }
   };
 
+  // Handle CSV upload success
+  const handleCsvUploadSuccess = () => {
+    setCurrentPage(1); // Reset to first page to show new products
+    fetchProducts();
+  };
+
   return (
     <div className="max-w-7xl mx-auto p-4">
       <ToastContainer
@@ -138,7 +166,7 @@ const Products: React.FC = () => {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Products</h1>
-          <p className="text-gray-600 mt-2">Manage your product inventory</p>
+          <p className="text-gray-600 mt-2">Manage your product inventory • Newest products first</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -147,6 +175,13 @@ const Products: React.FC = () => {
           >
             <Plus className="h-5 w-5" />
             <span>Add Product</span>
+          </button>
+          <button
+            onClick={() => setShowUploadCsv(true)}
+            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center space-x-2"
+          >
+            <Upload className="h-5 w-5" />
+            <span>Upload CSV</span>
           </button>
           <button
             onClick={() => {
@@ -230,7 +265,7 @@ const Products: React.FC = () => {
             ))}
           </tbody>
         </table>
-        {filteredProducts.length === 0 && (
+        {sortedProducts.length === 0 && (
           <div className="text-center py-12">
             <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
@@ -366,6 +401,16 @@ const Products: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Upload CSV Modal */}
+      <UploadCsv
+        isOpen={showUploadCsv}
+        onClose={() => setShowUploadCsv(false)}
+        onUploadSuccess={handleCsvUploadSuccess}
+        title="Upload Products CSV"
+        endpoint="/products/upload-csv"
+        maxFileSize={10}
+      />
     </div>
   );
 };

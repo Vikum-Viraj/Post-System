@@ -22,6 +22,7 @@ export interface Quotation {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
+  phone: string;
   receiverCompany?: string;
   receiverAddress?: string;
   items: QuotationItem[];
@@ -38,7 +39,8 @@ export interface Invoice {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
-  type:string;
+  type?: string;
+  payment?: string;
   items: QuotationItem[];
   subtotal: number;
   totalDiscount: number;

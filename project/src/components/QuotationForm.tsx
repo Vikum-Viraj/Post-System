@@ -28,9 +28,10 @@ interface QuotationItem {
 interface QuotationFormProps {
   products: Product[];
   onClose: () => void;
+  onSubmit?: (quotationData: any) => Promise<void>;
 }
 
-const QuotationForm: React.FC<QuotationFormProps> = ({ products, onClose }) => {
+const QuotationForm: React.FC<QuotationFormProps> = ({ products, onClose, onSubmit }) => {
   const [customerData, setCustomerData] = useState({
     name: '',
     email: '',
@@ -191,6 +192,10 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onClose }) => {
         toast.success('Quotation created successfully!');
         console.log('Quotation submitted:', response.data);
         onClose();
+        // Call the onSubmit callback to refresh the quotations list
+        if (onSubmit) {
+          await onSubmit(quotationData);
+        }
       } else {
         toast.error('Failed to create quotation. Please try again.');
       }
@@ -228,16 +233,13 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onClose }) => {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Information</h3>
               <div className="grid md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Customer Name *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Receiver Company Name</label>
                   <input
                     type="text"
-                    value={customerData.name}
-                    onChange={(e) => setCustomerData({ ...customerData, name: e.target.value })}
-                    required
+                    value={customerData.receiverCompany}
+                    onChange={e => setCustomerData({ ...customerData, receiverCompany: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="Enter customer name"
+                    placeholder="Enter receiver company name"
                   />
                 </div>
                 <div>
@@ -277,13 +279,16 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onClose }) => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Receiver Company Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Customer Name *
+                  </label>
                   <input
                     type="text"
-                    value={customerData.receiverCompany}
-                    onChange={e => setCustomerData({ ...customerData, receiverCompany: e.target.value })}
+                    value={customerData.name}
+                    onChange={(e) => setCustomerData({ ...customerData, name: e.target.value })}
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="Enter receiver company name"
+                    placeholder="Enter customer name"
                   />
                 </div>
                 <div>

@@ -8,6 +8,16 @@ interface InvoicePreviewProps {
 }
 
 const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onClose }) => {
+  // Helper to get payment type from either 'payment' or 'type' property
+  const getPaymentType = () => {
+    return invoice.payment || invoice.type || 'credit';
+  };
+
+  const isCashPayment = () => {
+    const paymentType = getPaymentType();
+    return paymentType === 'cash';
+  };
+
   // Helper to estimate number of pages (A4, rough estimate by item count)
   const estimatePageCount = () => {
     const itemsPerFirstPage = 8;
@@ -209,8 +219,8 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onClose }) => 
                   </div>
                   <div className="flex items-center justify-between space-x-2 mt-1">
                     <span className="text-xs text-gray-600">Payment:</span>
-                    <span className={invoice.type === 'cash' ? 'font-bold text-emerald-600 text-xs' : 'font-bold text-orange-600 text-xs'}>
-                      {invoice.type === 'cash' ? 'Cash' : 'Credit'}
+                    <span className={isCashPayment() ? 'font-bold text-emerald-600 text-xs' : 'font-bold text-orange-600 text-xs'}>
+                      {isCashPayment() ? 'Cash' : 'Credit'}
                     </span>
                   </div>
                 </div>
@@ -285,8 +295,8 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onClose }) => 
             <div className="grid grid-cols-2 gap-4 items-end">
               <div>
                 <p className="text-md text-gray-800">Darshana Electricals</p>
-                <p className="text-md text-gray-800">No 76/2B Diyagama,Kiriwathuduwa</p>
-                <p className="text-md text-gray-800">darshanaelectricals@gmail.com</p>
+                <p className="text-md text-gray-800">No. 76/B/2 Diyagama,Kiriwaththuduwa</p>
+                <p className="text-md text-gray-800">dharshanaelectrical60@gmail.com</p>
               </div>
             </div>
           </div>

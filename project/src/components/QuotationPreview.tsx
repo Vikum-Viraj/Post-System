@@ -207,8 +207,8 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose 
               <div className="text-left">
                 <h2 className="text-lg font-bold text-blue-600 mb-1">{quotation.receiverCompany || 'Your Company Name'}</h2>
                 <p className="text-xs text-gray-600">{quotation.receiverAddress || '123 Business Street'}</p>
-                <p className="text-xs text-gray-600">Phone: 0773145267</p>
-                <p className="text-xs text-gray-600">Email: darshanaelectricals@gmail.com</p>
+                <p className="text-xs text-gray-600">{quotation.phone}</p>
+                <p className="text-xs text-gray-600">{quotation.customerEmail}</p>
               </div>
               <div className="text-right">
                 <div className="bg-blue-50 p-3 rounded-lg inline-block">
@@ -332,8 +332,8 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose 
             <div className="grid grid-cols-2 gap-4 items-end">
               <div>
                 <p className="text-md text-gray-800">Darshana Electricals</p>
-                <p className="text-md text-gray-800">No 76/2B Diyagama,Kiriwathuduwa</p>
-                <p className="text-md text-gray-800">darshanaelectricals@gmail.com</p>
+                <p className="text-md text-gray-800">No. 76/B/2 Diyagama,Kiriwaththuduwa</p>
+                <p className="text-md text-gray-800">dharshanaelectrical60@gmail.com</p>
               </div>
             </div>
           </div>
