@@ -50,6 +50,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onClose, onSubm
   });
   const [totalDiscount, setTotalDiscount] = useState(0);
   const [totalDiscountPercent, setTotalDiscountPercent] = useState('');
+  const [showDiscountInRate, setShowDiscountInRate] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [productError, setProductError] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
@@ -113,32 +114,55 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onClose, onSubm
       return;
     }
     let discount = Number(currentItem.discount);
+    let unitPrice = Number(selectedProduct.mrp);
+    let itemTotal;
+    
     // If discountPercent is set, calculate discount from percent
     if (currentItem.discountPercent) {
       const percent = parseFloat(currentItem.discountPercent);
       if (!isNaN(percent) && percent >= 0 && percent <= 100) {
-        discount = (Number(selectedProduct.mrp) * Number(currentItem.quantity)) * (percent / 100);
+        if (showDiscountInRate) {
+          // Discount from MRP per unit
+          discount = Number(selectedProduct.mrp) * (percent / 100);
+        } else {
+          // Discount from total (current behavior)
+          discount = (Number(selectedProduct.mrp) * Number(currentItem.quantity)) * (percent / 100);
+        }
       }
     }
+    
     if (discount < 0) {
       setProductError('Discount cannot be negative');
       return;
     }
-    if (discount > selectedProduct.mrp * currentItem.quantity) {
-      setProductError('Discount cannot exceed item total');
-      return;
+    
+    if (showDiscountInRate) {
+      // Discount is per unit, deducted from MRP
+      if (discount > selectedProduct.mrp) {
+        setProductError('Discount cannot exceed unit price');
+        return;
+      }
+      unitPrice = Number(selectedProduct.mrp) - discount;
+      itemTotal = unitPrice * currentItem.quantity;
+      // In this mode, item discount is the per-unit discount
+    } else {
+      // Traditional mode: discount from total
+      if (discount > selectedProduct.mrp * currentItem.quantity) {
+        setProductError('Discount cannot exceed item total');
+        return;
+      }
+      itemTotal = (selectedProduct.mrp * currentItem.quantity) - discount;
     }
 
-    const itemTotal = (selectedProduct.mrp * currentItem.quantity) - discount;
     const newItem: QuotationItem = {
       productId: selectedProduct.id.toString(),
       productCode: selectedProduct.code,
       productName: selectedProduct.name,
       description: selectedProduct.description || '',
       mrp: Number(selectedProduct.mrp),
-      unitPrice: Number(selectedProduct.mrp),
+      unitPrice: showDiscountInRate ? unitPrice : Number(selectedProduct.mrp),
       quantity: Number(currentItem.quantity),
-      discount: discount,
+      discount: showDiscountInRate ? discount : discount, // Store total discount in both modes
       total: itemTotal,
     };
 
@@ -181,12 +205,14 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onClose, onSubm
       totalDiscount: itemDiscounts + totalDiscount,
       total,
       orderRef: customerData.orderRef,
+      showDiscountInRate: showDiscountInRate, // Add the toggle state
     };
     await handelSubmit(quotationData);
   };
 
   const handelSubmit = async (quotationData:any) => {
     try {
+      console.log('Quotation data being sent:', quotationData); // Debug log
       const response = await axiosInstance.post('/quotation', quotationData);
       if (response.status === 200 || response.status === 201) {
         toast.success('Quotation created successfully!');
@@ -307,7 +333,27 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onClose, onSubm
 
             {/* Add Items Section */}
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Items</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Add Items</h3>
+                
+                {/* Toggle for discount calculation mode */}
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Show discount in rate:</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowDiscountInRate(!showDiscountInRate)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                      showDiscountInRate ? 'bg-emerald-600' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        showDiscountInRate ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
 
               {/* Product Search */}
               <div className="relative mb-4">
@@ -441,7 +487,25 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onClose, onSubm
                   <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
                     <span className="text-sm font-medium text-gray-700">Item Total:</span>
                     <span className="text-lg font-semibold">
-                      Rs.{((Number(selectedProduct.mrp) * currentItem.quantity - (currentItem.discountPercent ? ((Number(selectedProduct.mrp) * currentItem.quantity) * (parseFloat(currentItem.discountPercent) / 100)) : currentItem.discount)).toFixed(2))}
+                      Rs.{(() => {
+                        const mrp = Number(selectedProduct.mrp);
+                        const quantity = currentItem.quantity;
+                        
+                        if (showDiscountInRate) {
+                          // In rate mode: rate is already discounted price per unit
+                          const discountedRate = currentItem.discountPercent 
+                            ? mrp - (mrp * (parseFloat(currentItem.discountPercent) / 100))
+                            : mrp - (currentItem.discount || 0);
+                          return (discountedRate * quantity).toFixed(2);
+                        } else {
+                          // In total mode: discount is applied to the total
+                          const total = mrp * quantity;
+                          const discountAmount = currentItem.discountPercent 
+                            ? total * (parseFloat(currentItem.discountPercent) / 100)
+                            : (currentItem.discount || 0);
+                          return (total - discountAmount).toFixed(2);
+                        }
+                      })()}
                     </span>
                   </div>
                 </div>

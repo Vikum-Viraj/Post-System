@@ -19,6 +19,7 @@ const Invoices: React.FC = () => {
       try {
         const response = await axiosInstance.get('/invoices');
         setInvoices(response.data);
+        console.log('Fetched invoices:', response.data);
       } catch (error) {
         // Optionally handle error
       }

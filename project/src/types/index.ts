@@ -12,6 +12,7 @@ export interface QuotationItem {
   productName: string;
   description: string;
   mrp: number;
+  unitPrice?: number;
   quantity: number;
   discount: number;
   total: number;
@@ -31,6 +32,7 @@ export interface Quotation {
   total: number;
   date: string;
   orderRef?: string;
+  showDiscountInRate?: boolean;
 }
 
 export interface Invoice {
@@ -47,4 +49,5 @@ export interface Invoice {
   total: number;
   date: string;
   status: 'pending' | 'paid' | 'cancelled';
+  showDiscountInRate?: boolean;
 }

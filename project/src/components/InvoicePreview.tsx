@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { X, Download, Printer } from 'lucide-react';
 import { Invoice } from '../types';
 
@@ -180,8 +181,19 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onClose }) => 
                 <p className="text-xs text-gray-600">{invoice.customerPhone}</p>
               </div>
               <div className="text-right">
-                <div className="bg-blue-50 p-3 rounded-lg inline-block">
-                  <div className="flex items-center justify-between space-x-2">
+                {/* Company Details box at the top */}
+                <div className="bg-gray-50 p-3 rounded-lg mb-3">
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-gray-800">Darshana Electricals</p>
+                    <p className="text-sm text-gray-600 mt-1">0777839065 / 0772050128</p>
+                    <p className="text-sm text-gray-600 mt-1">No. 76/B/2 Diyagama, Kiriwaththuduwa</p>
+                    <p className="text-sm text-gray-600">dharshanaelectrical60@gmail.com</p>
+                  </div>
+                </div>
+                
+                {/* Invoice Details box below company details */}
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <div className="flex items-center justify-between space-x-1">
                     <span className="text-xs text-gray-600">Invoice No:</span>
                     <span className="text-sm font-bold text-blue-600">#
                       {typeof invoice.id === 'string'
@@ -191,7 +203,7 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onClose }) => 
                           : '------'}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between space-x-2 mt-1">
+                  <div className="flex items-center justify-between space-x-1 mt-1">
                     <span className="text-xs text-gray-600">Date:</span>
                     <span className="font-semibold text-xs">{
                       (() => {
@@ -208,16 +220,16 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onClose }) => 
                     }</span>
                   </div>
                   {invoice.quotationId && (
-                    <div className="flex items-center justify-between space-x-2 mt-1">
+                    <div className="flex items-center justify-between space-x-1 mt-1">
                       <span className="text-xs text-gray-600">Quotation Ref:</span>
                       <span className="font-semibold text-xs">{invoice.quotationId}</span>
                     </div>
                   )}
-                  <div className="flex items-center justify-between space-x-2 mt-1">
+                  <div className="flex items-center justify-between space-x-1 mt-1">
                     <span className="text-xs text-gray-600">Pages:</span>
                     <span className="font-semibold text-xs">{pageCount}</span>
                   </div>
-                  <div className="flex items-center justify-between space-x-2 mt-1">
+                  <div className="flex items-center justify-between space-x-1 mt-1">
                     <span className="text-xs text-gray-600">Payment:</span>
                     <span className={isCashPayment() ? 'font-bold text-emerald-600 text-xs' : 'font-bold text-orange-600 text-xs'}>
                       {isCashPayment() ? 'Cash' : 'Credit'}
@@ -228,6 +240,16 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onClose }) => 
             </div>
           </div>
 
+          {/* Customer Information */}
+          <div className="mb-4">
+            <h3 className="text-sm font-bold text-gray-900 mb-2 border-b border-gray-200 pb-1">Bill To:</h3>
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <p className="font-semibold text-sm text-gray-900">{invoice.customerName}</p>
+              <p className="text-xs text-gray-600">{invoice.customerEmail}</p>
+              {invoice.customerPhone && <p className="text-xs text-gray-600">{invoice.customerPhone}</p>}
+            </div>
+          </div>
+
           {/* Items Table */}
           <div className="mb-4">
             <h3 className="text-sm font-bold text-gray-900 mb-2 border-b border-gray-200 pb-1">Items:</h3>
@@ -235,17 +257,28 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onClose }) => 
               <table className="w-full border-collapse border border-gray-300" style={{ tableLayout: 'fixed' }}>
                 <thead>
                   <tr className="bg-gray-100">
-                    <th className="border border-gray-300 px-1 py-2 text-left font-semibold text-xs" style={{ width: '13%' }}>Item Code</th>
-                    <th className="border border-gray-300 px-1 py-2 text-left font-semibold text-xs" style={{ width: '25%' }}>Description</th>
+                    <th className="border border-gray-300 px-1 py-2 text-left font-semibold text-xs" style={{ width: (() => {
+                      const hasDiscountInRate = invoice.showDiscountInRate;
+                      return hasDiscountInRate ? '15%' : '13%';
+                    })() }}>Item Code</th>
+                    <th className="border border-gray-300 px-1 py-2 text-left font-semibold text-xs" style={{ width: (() => {
+                      const hasDiscountInRate = invoice.showDiscountInRate;
+                      return hasDiscountInRate ? '30%' : '25%';
+                    })() }}>Description</th>
                     <th className="border border-gray-300 px-1 py-2 text-center font-semibold text-xs" style={{ width: '8%' }}>Qty</th>
                     <th className="border border-gray-300 px-1 py-2 text-right font-semibold text-xs" style={{ width: '13%' }}>Unit Price (Rs.)</th>
-                    <th className="border border-gray-300 px-1 py-2 text-right font-semibold text-xs" style={{ width: '13%' }}>Discount (Rs.)</th>
-                    <th className="border border-gray-300 px-1 py-2 text-right font-semibold text-xs" style={{ width: '15%' }}>Net Amount (Rs.)</th>
+                    <th className="border border-gray-300 px-1 py-2 text-right font-semibold text-xs" style={{ width: '13%' }}>
+                      {invoice.showDiscountInRate ? 'Rate (Rs.)' : 'Discount (Rs.)'}
+                    </th>
+                    <th className="border border-gray-300 px-1 py-2 text-right font-semibold text-xs" style={{ width: (() => {
+                      const hasDiscountInRate = invoice.showDiscountInRate;
+                      return hasDiscountInRate ? '21%' : '15%';
+                    })() }}>Net Amount (Rs.)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {invoice.items.map((item, index) => {
-                    const unitPrice = (item as any).unitPrice !== undefined ? (item as any).unitPrice : item.mrp;
+                    const itemWithUnitPrice = item as any;
                     return (
                       <tr key={index} className="border-b border-gray-300">
                         <td className="border border-gray-300 px-1 py-2 font-mono text-xs" style={{ wordWrap: 'break-word' }}>{item.productCode}</td>
@@ -256,8 +289,15 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onClose }) => 
                           </div>
                         </td>
                         <td className="border border-gray-300 px-1 py-2 text-center text-xs">{item.quantity}</td>
-                        <td className="border border-gray-300 px-1 py-2 text-right text-xs">{unitPrice.toFixed(2)}</td>
-                        <td className="border border-gray-300 px-1 py-2 text-right text-xs">{item.discount.toFixed(2)}</td>
+                        <td className="border border-gray-300 px-1 py-2 text-right text-xs">{item.mrp.toFixed(2)}</td>
+                        <td className="border border-gray-300 px-1 py-2 text-right text-xs">
+                          {invoice.showDiscountInRate
+                            ? (itemWithUnitPrice.unitPrice !== undefined 
+                                ? itemWithUnitPrice.unitPrice.toFixed(2) 
+                                : (item.mrp - item.discount).toFixed(2))
+                            : item.discount.toFixed(2)
+                          }
+                        </td>
                         <td className="border border-gray-300 px-1 py-2 text-right font-semibold text-xs">{item.total.toFixed(2)}</td>
                       </tr>
                     );
@@ -276,10 +316,12 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onClose }) => 
                     <span className="text-gray-600">Subtotal:</span>
                     <span className="font-semibold">Rs.{invoice.subtotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-600">Total Discount:</span>
-                    <span className="font-semibold text-red-600">Rs.{invoice.totalDiscount.toFixed(2)}</span>
-                  </div>
+                  {!invoice.showDiscountInRate && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Total Discount:</span>
+                      <span className="font-semibold text-red-600">Rs.{invoice.totalDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="border-t border-gray-300 pt-1">
                     <div className="flex justify-between text-sm">
                       <span className="font-bold">Total Amount:</span>
@@ -294,9 +336,7 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onClose }) => 
           <div className="border-t-2 border-gray-300 pt-3 mt-4">
             <div className="grid grid-cols-2 gap-4 items-end">
               <div>
-                <p className="text-md text-gray-800">Darshana Electricals</p>
-                <p className="text-md text-gray-800">No. 76/B/2 Diyagama,Kiriwaththuduwa</p>
-                <p className="text-md text-gray-800">dharshanaelectrical60@gmail.com</p>
+                <p className="text-sm text-gray-600 italic">Thank you for your business!</p>
               </div>
             </div>
           </div>

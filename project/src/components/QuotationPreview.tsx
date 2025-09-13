@@ -8,6 +8,7 @@ interface QuotationPreviewProps {
 }
 
 const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose }) => {
+  console.log('Rendering QuotationPreview with quotation:', quotation);
   // Helper to estimate number of pages (A4, rough estimate by item count)
   const estimatePageCount = () => {
     // 1st page: header + customer info + 8 items, then 15 items per page
@@ -211,8 +212,19 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose 
                 <p className="text-xs text-gray-600">{quotation.customerEmail}</p>
               </div>
               <div className="text-right">
-                <div className="bg-blue-50 p-3 rounded-lg inline-block">
-                  <div className="flex items-center justify-between space-x-2">
+                {/* Company Details box at the top */}
+                <div className="bg-gray-50 p-3 rounded-lg mb-3">
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-gray-800">Dharshana Electricals</p>
+                    <p className="text-sm text-gray-600 mt-1">0777839065 / 0772050128</p>
+                    <p className="text-sm text-gray-600 mt-1">No. 76/2/B Diyagama, Kiriwaththuduwa</p>
+                    <p className="text-sm text-gray-600">dharshanaelectrical60@gmail.com</p>
+                  </div>
+                </div>
+                
+                {/* Quotation Details box below company details */}
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <div className="flex items-center justify-between space-x-1">
                     <span className="text-xs text-gray-600">Quotation No:</span>
                     <span className="text-sm font-bold text-blue-600">#{
                       typeof quotation.id === 'string'
@@ -222,7 +234,7 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose 
                           : '------'
                     }</span>
                   </div>
-                  <div className="flex items-center justify-between space-x-2 mt-1">
+                  <div className="flex items-center justify-between space-x-1 mt-1">
                     <span className="text-xs text-gray-600">Date:</span>
                     <span className="font-semibold text-xs">{
                       (() => {
@@ -238,12 +250,12 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose 
                     }</span>
                   </div>
                   {quotation.orderRef && (
-                    <div className="flex items-center justify-between space-x-2 mt-1">
+                    <div className="flex items-center justify-between space-x-1 mt-1">
                       <span className="text-xs text-gray-600">Order Ref:</span>
                       <span className="font-semibold text-xs">{quotation.orderRef}</span>
                     </div>
                   )}
-                  <div className="flex items-center justify-between space-x-2 mt-1">
+                  <div className="flex items-center justify-between space-x-1 mt-1">
                     <span className="text-xs text-gray-600">Pages:</span>
                     <span className="font-semibold text-xs">{pageCount}</span>
                   </div>
@@ -269,19 +281,48 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose 
               <table className="w-full border-collapse border border-gray-300" style={{ tableLayout: 'fixed' }}>
                 <thead>
                   <tr className="bg-gray-100">
-                    <th className="border border-gray-300 px-1 py-2 text-left font-semibold text-xs" style={{ width: '13%' }}>Item Code</th>
-                    <th className="border border-gray-300 px-1 py-2 text-left font-semibold text-xs" style={{ width: '25%' }}>Description</th>
+                    <th className="border border-gray-300 px-1 py-2 text-left font-semibold text-xs" style={{ width: (() => {
+                      const hasDiscountInRate = quotation.showDiscountInRate || 
+                        quotation.items.some(item => {
+                          const itemWithUnitPrice = item as any;
+                          return itemWithUnitPrice.unitPrice !== undefined && itemWithUnitPrice.unitPrice !== item.mrp;
+                        });
+                      return hasDiscountInRate ? '15%' : '13%';
+                    })() }}>Item Code</th>
+                    <th className="border border-gray-300 px-1 py-2 text-left font-semibold text-xs" style={{ width: (() => {
+                      const hasDiscountInRate = quotation.showDiscountInRate || 
+                        quotation.items.some(item => {
+                          const itemWithUnitPrice = item as any;
+                          return itemWithUnitPrice.unitPrice !== undefined && itemWithUnitPrice.unitPrice !== item.mrp;
+                        });
+                      return hasDiscountInRate ? '30%' : '25%';
+                    })() }}>Description</th>
                     <th className="border border-gray-300 px-1 py-2 text-center font-semibold text-xs" style={{ width: '8%' }}>Qty</th>
                     <th className="border border-gray-300 px-1 py-2 text-right font-semibold text-xs" style={{ width: '13%' }}>Unit Price (Rs.)</th>
                     <th className="border border-gray-300 px-1 py-2 text-right font-semibold text-xs" style={{ width: '13%' }}>Rate (Rs.)</th>
-                    <th className="border border-gray-300 px-1 py-2 text-right font-semibold text-xs" style={{ width: '13%' }}>Discount (Rs.)</th>
-                    <th className="border border-gray-300 px-1 py-2 text-right font-semibold text-xs" style={{ width: '15%' }}>Net Amount (Rs.)</th>
+                    {(() => {
+                      // Check if any item has unitPrice different from mrp (indicates toggle was enabled)
+                      const hasDiscountInRate = quotation.showDiscountInRate || 
+                        quotation.items.some(item => {
+                          const itemWithUnitPrice = item as any;
+                          return itemWithUnitPrice.unitPrice !== undefined && itemWithUnitPrice.unitPrice !== item.mrp;
+                        });
+                      return !hasDiscountInRate;
+                    })() && (
+                      <th className="border border-gray-300 px-1 py-2 text-right font-semibold text-xs" style={{ width: '13%' }}>Discount (Rs.)</th>
+                    )}
+                    <th className="border border-gray-300 px-1 py-2 text-right font-semibold text-xs" style={{ width: (() => {
+                      const hasDiscountInRate = quotation.showDiscountInRate || 
+                        quotation.items.some(item => {
+                          const itemWithUnitPrice = item as any;
+                          return itemWithUnitPrice.unitPrice !== undefined && itemWithUnitPrice.unitPrice !== item.mrp;
+                        });
+                      return hasDiscountInRate ? '21%' : '15%';
+                    })() }}>Net Amount (Rs.)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {quotation.items.map((item, index) => {
-                    // Support both new and old QuotationItem (with or without unitPrice)
-                    const unitPrice = (item as any).unitPrice !== undefined ? (item as any).unitPrice : item.mrp;
                     return (
                       <tr key={index} className="border-b border-gray-300">
                         <td className="border border-gray-300 px-1 py-2 font-mono text-xs" style={{ wordWrap: 'break-word' }}>{item.productCode}</td>
@@ -292,9 +333,31 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose 
                           </div>
                         </td>
                         <td className="border border-gray-300 px-1 py-2 text-center text-xs">{item.quantity}</td>
-                        <td className="border border-gray-300 px-1 py-2 text-right text-xs">{unitPrice.toFixed(2)}</td>
                         <td className="border border-gray-300 px-1 py-2 text-right text-xs">{item.mrp.toFixed(2)}</td>
-                        <td className="border border-gray-300 px-1 py-2 text-right text-xs">{item.discount.toFixed(2)}</td>
+                        <td className="border border-gray-300 px-1 py-2 text-right text-xs">
+                          {(() => {
+                            // Check if toggle was enabled - either showDiscountInRate exists or unitPrice differs from mrp
+                            const itemWithUnitPrice = item as any;
+                            const toggleEnabled = quotation.showDiscountInRate || 
+                              (itemWithUnitPrice.unitPrice !== undefined && itemWithUnitPrice.unitPrice !== item.mrp);
+                            
+                            if (toggleEnabled) {
+                              // Show discounted price per unit (Rate per unit after discount)
+                              return itemWithUnitPrice.unitPrice !== undefined ? itemWithUnitPrice.unitPrice.toFixed(2) : (item.mrp - item.discount).toFixed(2);
+                            } else {
+                              // Show total rate (Quantity × Unit Price)
+                              return (item.quantity * item.mrp).toFixed(2);
+                            }
+                          })()}
+                        </td>
+                        {(() => {
+                          const itemWithUnitPrice = item as any;
+                          const toggleEnabled = quotation.showDiscountInRate || 
+                            (itemWithUnitPrice.unitPrice !== undefined && itemWithUnitPrice.unitPrice !== item.mrp);
+                          return !toggleEnabled;
+                        })() && (
+                          <td className="border border-gray-300 px-1 py-2 text-right text-xs">{item.discount.toFixed(2)}</td>
+                        )}
                         <td className="border border-gray-300 px-1 py-2 text-right font-semibold text-xs">{item.total.toFixed(2)}</td>
                       </tr>
                     );
@@ -313,10 +376,20 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose 
                     <span className="text-gray-600">Subtotal:</span>
                     <span className="font-semibold">Rs.{quotation.subtotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-600">Total Discount:</span>
-                    <span className="font-semibold text-red-600">Rs.{quotation.totalDiscount.toFixed(2)}</span>
-                  </div>
+                  {(() => {
+                    // Check if any item has unitPrice different from mrp (indicates toggle was enabled)
+                    const hasDiscountInRate = quotation.showDiscountInRate || 
+                      quotation.items.some(item => {
+                        const itemWithUnitPrice = item as any;
+                        return itemWithUnitPrice.unitPrice !== undefined && itemWithUnitPrice.unitPrice !== item.mrp;
+                      });
+                    return !hasDiscountInRate;
+                  })() && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Total Discount:</span>
+                      <span className="font-semibold text-red-600">Rs.{quotation.totalDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="border-t border-gray-300 pt-1">
                     <div className="flex justify-between text-sm">
                       <span className="font-bold">Total Amount:</span>
@@ -331,9 +404,7 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose 
           <div className="border-t-2 border-gray-300 pt-3 mt-4">
             <div className="grid grid-cols-2 gap-4 items-end">
               <div>
-                <p className="text-md text-gray-800">Darshana Electricals</p>
-                <p className="text-md text-gray-800">No. 76/B/2 Diyagama,Kiriwaththuduwa</p>
-                <p className="text-md text-gray-800">dharshanaelectrical60@gmail.com</p>
+                <p className="text-sm text-gray-600 italic">Thank you for your business!</p>
               </div>
             </div>
           </div>

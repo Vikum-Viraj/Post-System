@@ -157,7 +157,12 @@ const Quotations: React.FC = () => {
     setSavingInvoiceType(payment);
     // Remove id and date/createdDate from payload
     const { id, date, createdDate, ...rest } = quotation as any;
-    const payload = { ...rest, payment };
+    const payload = { 
+      ...rest, 
+      payment,
+      showDiscountInRate: quotation.showDiscountInRate || false // Explicitly include the field
+    };
+    console.log('Invoice payload being sent:', payload); // Debug log
     try {
       let response;
       try {
