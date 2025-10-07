@@ -11,6 +11,7 @@ interface Product {
   quantity: any;
   mrp: any;
   description?: string;
+  unit?: string; // Added unit field
 }
 
 interface QuotationItem {
@@ -19,6 +20,7 @@ interface QuotationItem {
   productName: string;
   description: string;
   mrp: number;
+  unit?: string;
   unitPrice: number;
   quantity: number;
   discount: number;
@@ -160,6 +162,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onClose, onSubm
       productName: selectedProduct.name,
       description: selectedProduct.description || '',
       mrp: Number(selectedProduct.mrp),
+      unit: selectedProduct.unit || '',
       unitPrice: showDiscountInRate ? unitPrice : Number(selectedProduct.mrp),
       quantity: Number(currentItem.quantity),
       discount: showDiscountInRate ? discount : discount, // Store total discount in both modes
@@ -212,8 +215,17 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onClose, onSubm
 
   const handelSubmit = async (quotationData:any) => {
     try {
-      console.log('Quotation data being sent:', quotationData); // Debug log
-      const response = await axiosInstance.post('/quotation', quotationData);
+      // Ensure items is a real array, not a string
+      const fixedQuotationData = {
+        ...quotationData,
+        items: Array.isArray(quotationData.items)
+          ? quotationData.items
+          : typeof quotationData.items === 'string'
+            ? JSON.parse(quotationData.items)
+            : [],
+      };
+      console.log('Quotation data being sent:', fixedQuotationData); // Debug log
+      const response = await axiosInstance.post('/quotation', fixedQuotationData);
       if (response.status === 200 || response.status === 201) {
         toast.success('Quotation created successfully!');
         console.log('Quotation submitted:', response.data);
@@ -414,6 +426,9 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onClose, onSubm
                   <div className="flex justify-between items-start mb-3">
                     <h4 className="font-medium text-gray-900">{selectedProduct.name}</h4>
                     <span className="font-semibold">Rs.{Number(selectedProduct.mrp).toFixed(2)}</span>
+                    {selectedProduct.unit && (
+                      <span className="ml-4 text-sm text-gray-500">Unit: {selectedProduct.unit}</span>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div>
@@ -533,25 +548,34 @@ const QuotationForm: React.FC<QuotationFormProps> = ({ products, onClose, onSubm
                       {items.map((item, index) => (
                         <tr key={index}>
                           <td className="px-4 py-3 text-sm text-gray-700">{item.productCode}</td>
-                          <td className="px-4 py-3 text-sm text-gray-900">
-                            <div className="font-medium">{item.productName}</div>
-                            {item.description && (
-                              <div className="text-xs text-gray-500">{item.description}</div>
-                            )}
-                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">{item.productName}</td>
                           <td className="px-4 py-3 text-sm text-right text-gray-700">Rs.{item.mrp.toFixed(2)}</td>
-                          <td className="px-4 py-3 text-sm text-right text-gray-700">{item.quantity}</td>
+                          <td className="px-4 py-3 text-sm text-right text-gray-700">
+                            <div className="flex items-center gap-1 justify-end">
+                              <input
+                                type="number"
+                                min="0"
+                                value={item.quantity}
+                                onChange={e => {
+                                  const newQty = Number(e.target.value);
+                                  if (isNaN(newQty) || newQty < 0) return;
+                                  if (newQty === 0) {
+                                    removeItem(index);
+                                  } else {
+                                    setItems(prev => prev.map((itm, idx) => idx === index ? { ...itm, quantity: newQty, total: (itm.unitPrice * newQty) } : itm));
+                                  }
+                                }}
+                                className="w-16 px-2 py-1 border border-gray-300 rounded text-right"
+                              />
+                              {item.unit && (
+                                <span className="ml-1 text-gray-500 text-xs">{item.unit}</span>
+                              )}
+                            </div>
+                          </td>
                           <td className="px-4 py-3 text-sm text-right text-gray-700">Rs.{item.discount.toFixed(2)}</td>
-                          <td className="px-4 py-3 text-sm text-right font-semibold text-emerald-600">Rs.{item.total.toFixed(2)}</td>
-                          <td className="px-4 py-3 text-sm text-right">
-                            <button
-                              type="button"
-                              onClick={() => removeItem(index)}
-                              className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1 rounded-lg transition-colors duration-200"
-                              title="Remove item"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                          <td className="px-4 py-3 text-sm text-right text-gray-700">Rs.{item.total.toFixed(2)}</td>
+                          <td className="px-4 py-3 text-sm text-right text-gray-700">
+                            <button type="button" onClick={() => removeItem(index)} className="text-red-600 hover:text-red-900">Remove</button>
                           </td>
                         </tr>
                       ))}

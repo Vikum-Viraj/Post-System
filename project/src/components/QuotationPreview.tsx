@@ -332,7 +332,7 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose 
                             <p className="text-xs text-gray-600">{item.description}</p>
                           </div>
                         </td>
-                        <td className="border border-gray-300 px-1 py-2 text-center text-xs">{item.quantity}</td>
+                        <td className="border border-gray-300 px-1 py-2 text-center text-xs">{item.quantity}{item.unit ? ` ${item.unit}` : ''}</td>
                         <td className="border border-gray-300 px-1 py-2 text-right text-xs">{item.mrp.toFixed(2)}</td>
                         <td className="border border-gray-300 px-1 py-2 text-right text-xs">
                           {(() => {

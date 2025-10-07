@@ -17,7 +17,9 @@ const Products: React.FC = () => {
     name: '',
     code: '',
     quantity: '',
+    unit: '',
     mrp: '',
+    cost: '',
   });
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   // Remove delete modal state
@@ -75,7 +77,9 @@ const Products: React.FC = () => {
         name: updatedProduct.name,
         code: updatedProduct.code,
         quantity: updatedProduct.quantity,
+        unit: updatedProduct.unit,
         mrp: updatedProduct.mrp,
+        cost: updatedProduct.cost,
       };
       const response = await axiosInstance.put(`/product/${updatedProduct.id}`, payload);
       if (response.status === 200) {
@@ -97,14 +101,16 @@ const Products: React.FC = () => {
       const productToAdd = {
         name: formData.name,
         code: formData.code,
-        quantity: Number(formData.quantity || '0'),
+        quantity: formData.quantity,
+        unit: formData.unit,
         mrp: Number(formData.mrp || '0'),
+        cost: Number(formData.cost || '0'),
       };
       try {
         const response = await axiosInstance.post('/product', productToAdd);
         if (response.status === 200) {
           setShowForm(false);
-          setFormData({ name: '', code: '', quantity: '', mrp: '' });
+          setFormData({ name: '', code: '', quantity: '', unit: '', mrp: '', cost: '' });
           setCurrentPage(1); // Reset to first page to show the new product
           fetchProducts();
           toast.success('Product added successfully!');
@@ -113,19 +119,21 @@ const Products: React.FC = () => {
         toast.error('Error adding product!');
         console.error('Error adding product:', error);
       }
+    } else {
+      toast.error('Please fill all required fields.');
     }
   };
 
   const cancelForm = () => {
     setShowForm(false);
-    setFormData({ name: '', code: '', quantity: '', mrp: '' });
+    setFormData({ name: '', code: '', quantity: '', unit: '', mrp: '', cost: '' });
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'quantity' || name === 'mrp' ? Number(value) : value
+      [name]: value
     }));
   };
 
@@ -187,7 +195,7 @@ const Products: React.FC = () => {
             onClick={() => {
               // CSV download logic
               const csvRows = [];
-              const headers = ['ID', 'Name', 'Code', 'Quantity', 'MRP'];
+              const headers = ['ID', 'Name', 'Code', 'Quantity', 'MRP', 'Cost'];
               csvRows.push(headers.join(','));
               products.forEach(product => {
                 const row = [
@@ -196,6 +204,7 @@ const Products: React.FC = () => {
                   '"' + (product.code ?? '') + '"',
                   '"' + (product.quantity ?? '') + '"',
                   '"' + (product.mrp ?? '') + '"',
+                  '"' + (product.cost ?? '') + '"',
                 ];
                 csvRows.push(row.join(','));
               });
@@ -237,6 +246,7 @@ const Products: React.FC = () => {
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Name</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Code</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">MRP (Rs.)</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Cost (Rs.)</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Quantity</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
             </tr>
@@ -247,7 +257,10 @@ const Products: React.FC = () => {
                 <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{product.name}</td>
                 <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700">{product.code}</td>
                 <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700">Rs. {product.mrp.toFixed(2)}</td>
-                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700">{product.quantity}</td>
+                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700">
+                  {product.cost ? `Rs. ${Number(product.cost).toFixed(2)}` : '-'}
+                </td>
+                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700">{product.quantity} {product.unit}</td>
                 <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700">
                   <button
                     className="text-blue-600 hover:text-blue-900 mr-3"
@@ -312,12 +325,12 @@ const Products: React.FC = () => {
 )}
       {/* Add Product Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-12 z-50">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl h-[60vh]">
-            <div className="p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Add New Product</h2>
-              
-              <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-8" style={{ minWidth: '600px' }}>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Add New Product</h2>
+            
+            <form id="product-form" onSubmit={handleSubmit}>
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Product Name *
@@ -369,40 +382,76 @@ const Products: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Quantity *
                     </label>
-                    <input
-                      type="number"
-                      name="quantity"
-                      value={formData.quantity}
-                      onChange={handleInputChange}
-                      min="0"
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    <div className="flex space-x-2">
+                      <input
+                        type="number"
+                        name="quantity"
+                        value={formData.quantity}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="any"
+                        required
+                        className="w-2/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <select
+                        name="unit"
+                        value={formData.unit}
+                        onChange={handleInputChange}
+                        className="w-1/3 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">unit</option>
+                        <option value="pcs">pcs</option>
+                        <option value="g">g</option>
+                        <option value="kg">kg</option>
+                        <option value="mg">mg</option>
+                        <option value="m">m</option>
+                        <option value="cm">cm</option>
+                        <option value="mm">mm</option>
+                        <option value="l">l</option>
+                        <option value="ml">ml</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={cancelForm}
-                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
-                  >
-                    Add Product
-                  </button>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Cost
+                  </label>
+                  <input
+                    type="number"
+                    name="cost"
+                    value={formData.cost}
+                    onChange={handleInputChange}
+                    min="0"
+                    step="0.01"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
                 </div>
-              </form>
+              </div>
+            </form>
+            <div className="flex space-x-6 pt-8 justify-end">
+              <button
+                type="button"
+                onClick={cancelForm}
+                className="px-8 py-3 border border-gray-300 text-lg text-gray-700 rounded-xl hover:bg-gray-50 transition-colors duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="product-form"
+                className="px-8 py-3 bg-blue-600 text-lg text-white rounded-xl hover:bg-blue-700 transition-colors duration-200"
+              >
+                Add Product
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Upload CSV Modal */}
+      {/* Upload Csv Modal */}
       <UploadCsv
         isOpen={showUploadCsv}
         onClose={() => setShowUploadCsv(false)}

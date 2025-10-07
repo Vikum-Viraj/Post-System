@@ -9,18 +9,18 @@ interface EditProductModalProps {
 
 const EditProductModal: React.FC<EditProductModalProps> = ({ product, onClose, onSave }) => {
   const [formData, setFormData] = useState<Product>(
-    product || { id: 0, name: '', code: '', quantity: 0, mrp: 0 }
+    product || { id: 0, name: '', code: '', quantity: 0, mrp: 0, cost: 0, unit: '' }
   );
 
   useEffect(() => {
     if (product) setFormData(product);
   }, [product]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === 'quantity' || name === 'mrp' ? Number(value) : value,
+      [name]: name === 'quantity' || name === 'mrp' || name === 'cost' ? Number(value) : value,
     }));
   };
 
@@ -87,6 +87,41 @@ const EditProductModal: React.FC<EditProductModalProps> = ({ product, onClose, o
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Cost</label>
+                <input
+                  type="number"
+                  name="cost"
+                  value={formData.cost}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Unit</label>
+                <select
+                  name="unit"
+                  value={formData.unit}
+                  onChange={handleInputChange}
+                  className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select unit</option>
+                  <option value="pcs">pcs</option>
+                  <option value="g">g</option>
+                  <option value="kg">kg</option>
+                  <option value="mg">mg</option>
+                  <option value="m">m</option>
+                  <option value="cm">cm</option>
+                  <option value="mm">mm</option>
+                  <option value="l">l</option>
+                  <option value="ml">ml</option>
+                </select>
               </div>
             </div>
 

@@ -2,7 +2,9 @@ export interface Product {
   id: any;
   name: string;
   code: string;
+  unit: string;
   quantity: any;
+  cost: any;
   mrp: any;
 }
 
@@ -12,6 +14,7 @@ export interface QuotationItem {
   productName: string;
   description: string;
   mrp: number;
+  unit?: string;
   unitPrice?: number;
   quantity: number;
   discount: number;
