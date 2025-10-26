@@ -58,6 +58,7 @@ export interface Invoice {
   showDiscountInRate?: boolean;
 }
 export interface Supplier {
+  id?: any;
   name: string;
   address?: string;
   itemName: string;

@@ -1,44 +1,116 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus, Edit, Trash2 } from 'lucide-react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import axiosInstance from '../config/axiosConfig';
 import SupplierForm from '../components/SupplierForm';
+import EditSupplier from '../components/EditSupplier';
 import { Supplier } from '../types';
 
-const initialSample: Supplier[] = [
-  { name: 'Acme Supplies', address: '123 Main St', itemName: 'Widget A', itemCode: 'W-A-001', quantity: 10, cost: 5, totalCost: 50 },
-];
+const initialSample: Supplier[] = []
 
 const ReceivedProducts: React.FC = () => {
   const [items, setItems] = useState<Supplier[]>(initialSample);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [modalInitial, setModalInitial] = useState<Partial<Supplier> | null>(null);
 
+  const fetchSupplier = async () => {
+    try {
+      const response = await axiosInstance.get('/suppliers');
+      if (response.status === 200) {
+        setItems(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching suppliers:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchSupplier();
+  }, []);
+
+  // Helper: delete supplier by id
+  const deleteSupplier = async (id: any) => {
+    return axiosInstance.delete(`/supplier/${id}`);
+  };
+
+  // Helper: update supplier by id
+  const updateSupplier = async (id: any, data: Supplier) => {
+    return axiosInstance.put(`/supplier/${id}`, data);
+  };
+  
   const handleAdd = () => {
     setEditingIndex(null);
     setModalInitial(null);
-    setModalOpen(true);
+    setAddOpen(true);
   };
 
   const handleEdit = (idx: number) => {
     setEditingIndex(idx);
     setModalInitial(items[idx]);
-    setModalOpen(true);
+    setEditOpen(true);
   };
 
-  const handleDelete = (idx: number) => {
+  const handleDelete = async (idx: number) => {
     if (!confirm('Delete this received product?')) return;
+    const target = items[idx];
+    // If record has an id, delete from server first
+    if (target && target.id) {
+      try {
+        await deleteSupplier(target.id);
+        toast.success('Supplier deleted');
+        setItems(prev => prev.filter((_, i) => i !== idx));
+      } catch (err) {
+        console.error('Error deleting supplier', err);
+        toast.error('Failed to delete supplier');
+      }
+      return;
+    }
+    // fallback: local-only
     setItems(prev => prev.filter((_, i) => i !== idx));
   };
 
-  const handleSave = (data: Supplier) => {
-    if (editingIndex === null) {
-      setItems(prev => [...prev, data]);
-    } else {
-      setItems(prev => prev.map((it, i) => (i === editingIndex ? data : it)));
+  const handleSave = async (data: Supplier) => {
+    try {
+      // Add new supplier
+      if (editingIndex === null) {
+        const response = await axiosInstance.post('/supplier', data);
+        if (response.status === 200 || response.status === 201) {
+          const saved: Supplier = response.data;
+          setItems(prev => [...prev, saved]);
+          toast.success('Supplier added');
+        } else {
+          toast.error('Failed to add supplier');
+        }
+      } else {
+        // Update existing supplier
+        const existing = items[editingIndex];
+        if (existing && existing.id) {
+          const response = await updateSupplier(existing.id, data);
+          if (response.status === 200) {
+            const updated: Supplier = response.data;
+            setItems(prev => prev.map((it, i) => (i === editingIndex ? updated : it)));
+            toast.success('Supplier updated');
+          } else {
+            toast.error('Failed to update supplier');
+          }
+        } else {
+          // no id: update local
+          setItems(prev => prev.map((it, i) => (i === editingIndex ? data : it)));
+          toast.success('Supplier updated');
+        }
+      }
+    } catch (error) {
+      console.error('Error saving supplier', error);
+      toast.error('Error saving supplier');
+    } finally {
+      setAddOpen(false);
+      setEditOpen(false);
+      setEditingIndex(null);
+      setModalInitial(null);
     }
-    setModalOpen(false);
-    setEditingIndex(null);
-    setModalInitial(null);
   };
 
   return (
@@ -53,18 +125,19 @@ const ReceivedProducts: React.FC = () => {
         </div>
       </div>
 
+      <ToastContainer position="top-right" autoClose={2000} />
       <div className="overflow-auto">
         <table className="min-w-full">
           <thead>
-          <tr className="bg-gray-50">
-              <th className="px-4 py-3 text-left text-sm text-gray-900 font-medium">Supplier</th>
-              <th className="px-4 py-3 text-left text-sm text-gray-900 font-medium">Address</th>
-              <th className="px-4 py-3 text-left text-sm text-gray-900 font-medium">Item</th>
-              <th className="px-4 py-3 text-left text-sm text-gray-900 font-medium">Code</th>
-              <th className="px-4 py-3 text-left text-sm text-gray-900 font-medium">Qty</th>
-              <th className="px-4 py-3 text-left text-sm text-gray-900 font-medium">Cost</th>
-              <th className="px-4 py-3 text-left text-sm text-gray-900 font-medium">Total</th>
-              <th className="px-4 py-3 text-left text-sm text-gray-900 font-medium">Actions</th>
+          <tr className="bg-gray-100 border-b border-gray-300">
+              <th className="px-4 py-3 text-left text-sm text-gray-800 font-semibold uppercase tracking-wide">Supplier</th>
+              <th className="px-4 py-3 text-left text-sm text-gray-800 font-semibold uppercase tracking-wide">Address</th>
+              <th className="px-4 py-3 text-left text-sm text-gray-800 font-semibold uppercase tracking-wide">Item</th>
+              <th className="px-4 py-3 text-left text-sm text-gray-800 font-semibold uppercase tracking-wide">Code</th>
+              <th className="px-4 py-3 text-left text-sm text-gray-800 font-semibold uppercase tracking-wide">Qty</th>
+              <th className="px-4 py-3 text-left text-sm text-gray-800 font-semibold uppercase tracking-wide">Cost</th>
+              <th className="px-4 py-3 text-left text-sm text-gray-800 font-semibold uppercase tracking-wide">Total</th>
+              <th className="px-4 py-3 text-left text-sm text-gray-800 font-semibold uppercase tracking-wide">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -91,7 +164,8 @@ const ReceivedProducts: React.FC = () => {
         </table>
       </div>
 
-      <SupplierForm isOpen={modalOpen} initial={modalInitial} onClose={() => setModalOpen(false)} onSave={handleSave} />
+      <SupplierForm isOpen={addOpen} initial={null} onClose={() => setAddOpen(false)} onSave={handleSave} />
+      <EditSupplier isOpen={editOpen} supplier={modalInitial} onClose={() => setEditOpen(false)} onSave={handleSave} />
     </div>
   );
 };
