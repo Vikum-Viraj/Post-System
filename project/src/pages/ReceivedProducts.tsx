@@ -113,15 +113,66 @@ const ReceivedProducts: React.FC = () => {
     }
   };
 
+    // Export current items to CSV
+    const downloadCsv = (rows: Supplier[]) => {
+      try {
+        if (!rows || rows.length === 0) {
+          toast.info('No data to export');
+          return;
+        }
+
+        const headers = ['Supplier', 'Address', 'Item Name', 'Item Code', 'Quantity', 'Cost', 'Total Cost'];
+
+        const escapeCsv = (v: any) => {
+          if (v === null || v === undefined) return '""';
+          const s = String(v);
+          // double quotes inside field must be doubled per CSV rules
+          const escaped = s.replace(/"/g, '""');
+          return `"${escaped}"`;
+        };
+
+        const rowsText = rows.map(r => [
+          escapeCsv(r.name),
+          escapeCsv(r.address),
+          escapeCsv(r.itemName),
+          escapeCsv(r.itemCode),
+          escapeCsv(r.quantity),
+          escapeCsv(r.cost),
+          escapeCsv(r.totalCost),
+        ].join(',')).join('\n');
+
+        const csv = `${headers.map(h => '"' + h.replace(/"/g, '""') + '"').join(',')}\n${rowsText}`;
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `received_products_${new Date().toISOString().slice(0,10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success('CSV export started');
+      } catch (err) {
+        console.error('CSV export error', err);
+        toast.error('Failed to export CSV');
+      }
+    };
+
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold">Received Products</h2>
         <div>
-          <button onClick={handleAdd} className="px-3 py-1 bg-green-600 text-white rounded flex items-center gap-2">
+          <div className="flex gap-2">
+            <button onClick={() => downloadCsv(items)} className="px-3 py-1 bg-blue-600 text-white rounded flex items-center gap-2">
+              <span>Download Report</span>
+            </button>
+            <button onClick={handleAdd} className="px-3 py-1 bg-green-600 text-white rounded flex items-center gap-2">
             <Plus className="w-4 h-4" />
             <span>Add</span>
           </button>
+          </div>
         </div>
       </div>
 
