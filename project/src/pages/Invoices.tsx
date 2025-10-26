@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import axiosInstance from '../config/axiosConfig';
 import { Search, Receipt, Eye } from 'lucide-react';
 import { Invoice as BaseInvoice } from '../types';
@@ -7,12 +9,14 @@ type Invoice = BaseInvoice & {
   payment?: string;
 };
 import InvoicePreview from '../components/InvoicePreview';
+import InvoiceEditModal from '../components/InvoiceEditModal';
 
 const Invoices: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'paid' | 'cancelled'>('all');
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
+  const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
 
   useEffect(() => {
     const fetchInvoices = async () => {
@@ -225,6 +229,15 @@ const Invoices: React.FC = () => {
                       >
                         <Eye className="h-5 w-5" />
                       </button>
+                      <button
+                        onClick={() => setEditInvoice(invoice)}
+                        className="p-1 text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded transition-colors duration-200"
+                        title="Edit Invoice"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 3.487a2.25 2.25 0 113.182 3.182L7.5 19.213l-4 1 1-4 12.362-12.726z" />
+                        </svg>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -279,6 +292,19 @@ const Invoices: React.FC = () => {
     {previewInvoice && (
       <InvoicePreview invoice={previewInvoice} onClose={() => setPreviewInvoice(null)} />
     )}
+    {/* Invoice Edit Modal */}
+    {editInvoice && (
+      <InvoiceEditModal
+        invoice={editInvoice}
+        onClose={() => setEditInvoice(null)}
+        onSave={updated => {
+          setInvoices(inv => inv.map(i => i.id === updated.id ? updated : i));
+          setEditInvoice(null);
+          toast.success('Invoice updated successfully!');
+        }}
+      />
+    )}
+    <ToastContainer position="top-right" autoClose={2500} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover />
   </div>
   );
 };

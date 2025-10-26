@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, FileText, Receipt, LogIn, UserPlus, LogOut, Home } from 'lucide-react';
+import { ShoppingBag, FileText, Receipt, LogIn, UserPlus, LogOut, Home, Check, Paperclip } from 'lucide-react';
 
 interface NavbarProps {
   isAuthenticated: boolean;
@@ -29,6 +29,7 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, onLogout }) => {
                 <NavLink to="/products" icon={ShoppingBag} text="Products" isActive={isActive('/products')} />
                 <NavLink to="/quotations" icon={FileText} text="Quotations" isActive={isActive('/quotations')} />
                 <NavLink to="/invoices" icon={Receipt} text="Invoices" isActive={isActive('/invoices')} />
+                <NavLink to="/receivedproducts" icon={Paperclip} text="GRM" isActive={isActive('/receivedproducts')} />
               </>
             )}
 

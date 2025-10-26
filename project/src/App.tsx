@@ -7,12 +7,14 @@ import Quotations from './pages/Quotations';
 import Invoices from './pages/Invoices';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
-import { Product, Quotation, Invoice } from './types';
+import { Product, Quotation, Invoice, Supplier } from './types';
+import ReceivedProducts from './pages/ReceivedProducts';
 
 function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true); // Add loading state
 
@@ -141,6 +143,16 @@ function App() {
                 )
               } 
             />
+            <Route
+              path='/receivedproducts'
+              element={
+                isAuthenticated ? (
+                  <ReceivedProducts  suppliers={suppliers} />
+                ) : (
+                  <Navigate to="/login" />
+                )
+              }
+              />
             <Route 
               path="/login" 
               element={<Login onLogin={() => handleAuth(true)} />} 

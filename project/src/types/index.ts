@@ -44,6 +44,9 @@ export interface Invoice {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
+  receiverCompany: string;
+  receiverAddress: string;
+  orderRef?: string;
   type?: string;
   payment?: string;
   items: QuotationItem[];
@@ -53,4 +56,13 @@ export interface Invoice {
   date: string;
   status: 'pending' | 'paid' | 'cancelled';
   showDiscountInRate?: boolean;
+}
+export interface Supplier {
+  name: string;
+  address?: string;
+  itemName: string;
+  itemCode: string;
+  quantity: number;
+  cost: number;
+  totalCost: number;
 }

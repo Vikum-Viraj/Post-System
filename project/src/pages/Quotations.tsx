@@ -5,12 +5,28 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Product, Quotation } from '../types';
 import QuotationForm from '../components/QuotationForm';
 import QuotationPreview from '../components/QuotationPreview';
+import QuotationEditModal from '../components/QuotationEditModal';
 import axiosInstance from '../config/axiosConfig';
 
 const Quotations: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [previewQuotation, setPreviewQuotation] = useState<Quotation | null>(null);
+  const [editQuotation, setEditQuotation] = useState<Quotation | null>(null);
+
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Quotation | 'createdDate'; direction: 'ascending' | 'descending' } | null>({ key: 'createdDate', direction: 'descending' });
+  const [isSavingInvoice, setIsSavingInvoice] = useState(false);
+  const [savingInvoiceType, setSavingInvoiceType] = useState<'cash' | 'credit' | null>(null);
+  const [noStockModal, setNoStockModal] = useState<{
+    open: boolean;
+    message: string;
+    payload: any;
+    payment: 'cash' | 'credit';
+    details?: Array<{ productName: string; requestedQty: number; availableQty: number }>;
+  } | null>(null);
 
   const handleDeleteQuotation = async (quotationId: string | number) => {
     if (!window.confirm('Are you sure you want to delete this quotation?')) return;
@@ -25,7 +41,6 @@ const Quotations: React.FC = () => {
       setIsDeleting(null);
     }
   };
-  // (Removed duplicate useState declarations)
 
   useEffect(() => {
     // Fetch quotations
@@ -52,20 +67,6 @@ const Quotations: React.FC = () => {
     };
     fetchProducts();
   }, []);
-  const [showForm, setShowForm] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [previewQuotation, setPreviewQuotation] = useState<Quotation | null>(null);
-  type QuotationSortKey = keyof Quotation | 'createdDate';
-  const [sortConfig, setSortConfig] = useState<{ key: QuotationSortKey; direction: 'ascending' | 'descending' } | null>({ key: 'createdDate', direction: 'descending' });
-  const [isSavingInvoice, setIsSavingInvoice] = useState(false);
-  const [savingInvoiceType, setSavingInvoiceType] = useState<'cash' | 'credit' | null>(null);
-  const [noStockModal, setNoStockModal] = useState<{
-    open: boolean;
-    message: string;
-    payload: any;
-    payment: 'cash' | 'credit';
-    details?: Array<{ productName: string; requestedQty: number; availableQty: number }>;
-  } | null>(null);
 
   // Handler for confirming no stock modal
   const handleNoStockProceed = async () => {
@@ -145,7 +146,7 @@ const Quotations: React.FC = () => {
   const totalPages = Math.ceil(sortedQuotations.length / pageSize);
   const paginatedQuotations = sortedQuotations.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  const requestSort = (key: QuotationSortKey) => {
+  const requestSort = (key: keyof Quotation | 'createdDate') => {
     let direction: 'ascending' | 'descending' = 'ascending';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
       direction = 'descending';
@@ -413,6 +414,15 @@ const Quotations: React.FC = () => {
                         ) : null}
                         <ArrowRight className="h-5 w-5" />
                       </button>
+                      <button
+                        onClick={() => setEditQuotation(quotation)}
+                        className="p-1 text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded transition-colors duration-200"
+                        title="Edit Quotation"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 3.487a2.25 2.25 0 113.182 3.182L7.5 19.213l-4 1 1-4 12.362-12.726z" />
+                        </svg>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -520,6 +530,19 @@ const Quotations: React.FC = () => {
         <QuotationPreview
           quotation={previewQuotation}
           onClose={() => setPreviewQuotation(null)}
+        />
+      )}
+
+      {/* Quotation Edit Modal */}
+      {editQuotation && (
+        <QuotationEditModal
+          quotation={editQuotation}
+          onClose={() => setEditQuotation(null)}
+          onSave={updated => {
+            setQuotations(qs => qs.map(q => q.id === updated.id ? updated : q));
+            setEditQuotation(null);
+            toast.success('Quotation updated!');
+          }}
         />
       )}
 

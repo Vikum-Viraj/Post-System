@@ -45,6 +45,12 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose 
         .no-print {
           display: none !important;
         }
+        /* Allow table to break across pages and repeat thead on each page */
+        table { page-break-inside: auto; border-collapse: collapse; }
+        tr    { page-break-inside: avoid; page-break-after: auto; }
+        thead { display: table-header-group; }
+        tfoot { display: table-footer-group; }
+
         @page {
           size: A4;
           margin: 0;
@@ -63,110 +69,172 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose 
   };
 
   const handleDownload = () => {
-    // Get the content to download
-    const content = document.querySelector('.printable-content');
-    if (!content) return;
+    const items = (quotation.items || []).slice();
 
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
-    if (!printWindow) {
-      alert('Please allow popups to download the PDF');
-      return;
-    }
+    const hasDiscountInRate = quotation.showDiscountInRate || items.some((it: any) => (it as any).unitPrice !== undefined && (it as any).unitPrice !== (it as any).mrp);
 
-    // Clone the content to avoid modifying the original
-    const clonedContent = content.cloneNode(true) as HTMLElement;
-    
-    // Generate the HTML for the new window
-    const htmlContent = `
-      <!DOCTYPE html>
+    const renderRow = (item: any) => {
+      const hasUnitPrice = item.unitPrice !== undefined && item.unitPrice !== item.mrp;
+      const showDiscountCol = !(quotation.showDiscountInRate || hasUnitPrice);
+      const rateCell = (quotation.showDiscountInRate || hasUnitPrice)
+        ? (item.unitPrice !== undefined ? item.unitPrice.toFixed(2) : (item.mrp - item.discount).toFixed(2))
+        : (item.quantity * item.mrp).toFixed(2);
+
+      return (
+        '<tr>' +
+        `<td style="border:1px solid #e5e7eb;padding:6px;">${item.productCode || ''}</td>` +
+        `<td style="border:1px solid #e5e7eb;padding:6px;">${(item.productName || '') + (item.description ? ('<div style=\"font-size:10px;color:#6b7280;\">' + item.description + '</div>') : '')}</td>` +
+        `<td style="border:1px solid #e5e7eb;padding:6px;text-align:center;">${item.quantity}${item.unit ? ' ' + item.unit : ''}</td>` +
+        `<td style="border:1px solid #e5e7eb;padding:6px;text-align:right;">${item.mrp.toFixed(2)}</td>` +
+        `<td style="border:1px solid #e5e7eb;padding:6px;text-align:right;">${rateCell}</td>` +
+        (showDiscountCol ? `<td style="border:1px solid #e5e7eb;padding:6px;text-align:right;">${item.discount.toFixed(2)}</td>` : '') +
+        `<td style="border:1px solid #e5e7eb;padding:6px;text-align:right;">${item.total.toFixed(2)}</td>` +
+        '</tr>'
+      );
+    };
+
+    const tableHeaderHtml = `
+      <thead>
+        <tr style="background:#f3f4f6;">
+          <th style="border:1px solid #e5e7eb;padding:6px;text-align:left;width:12%;">Item Code</th>
+          <th style="border:1px solid #e5e7eb;padding:6px;text-align:left;width:40%;">Description</th>
+          <th style="border:1px solid #e5e7eb;padding:6px;text-align:center;width:8%;">Qty</th>
+          <th style="border:1px solid #e5e7eb;padding:6px;text-align:right;width:10%;">Unit Price (Rs.)</th>
+          <th style="border:1px solid #e5e7eb;padding:6px;text-align:right;width:10%;">Rate (Rs.)</th>
+          ${hasDiscountInRate ? '' : '<th style="border:1px solid #e5e7eb;padding:6px;text-align:right;width:10%;">Discount (Rs.)</th>'}
+          <th style="border:1px solid #e5e7eb;padding:6px;text-align:right;width:10%;">Net Amount (Rs.)</th>
+        </tr>
+      </thead>
+    `;
+
+    const allRowsHtml = items.map(renderRow).join('');
+
+    const headerHtmlFirst = `
+      <div style="text-align:left;margin-bottom:8px;border-bottom:2px solid #e5e7eb;padding-bottom:8px;">
+        <h1 style="font-size:18px;font-weight:700;color:#0f172a;margin:0 0 8px 0;text-align:center;">SALES QUOTATION</h1>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-top:6px;">
+          <div style="text-align:left;flex:1;">
+            <h2 style="font-size:14px;color:#1e40af;margin:0 0 4px 0;">${quotation.receiverCompany || 'Your Company Name'}</h2>
+            <div style="font-size:10px;color:#6b7280;line-height:1.2;margin-bottom:8px;">${quotation.receiverAddress ? (quotation.receiverAddress + '<br/>') : ''}${quotation.phone ? (quotation.phone + '<br/>') : ''}${quotation.customerEmail ? quotation.customerEmail : ''}</div>
+            
+            <div style="background:#f8fafc;padding:2px;border-radius:6px;display:inline-block;margin-top:32px">
+            <div style="font-weight:700;font-size:12px;margin-bottom:6px;">Bill To:</div>
+              <div style="font-weight:600;font-size:11px;color:#0f172a;">${quotation.customerName || ''}</div>
+              <div style="font-size:10px;color:#6b7280;line-height:1.2;">${quotation.customerEmail || ''}${quotation.customerPhone ? ('<br/>' + quotation.customerPhone) : ''}</div>
+            </div>
+          </div>
+          <div style="flex:0 0 320px;text-align:right;">
+            <div style="background:#f8fafc;padding:8px;border-radius:8px;margin-bottom:8px;display:inline-block;text-align:right;">
+              <div style="font-weight:700;color:#0f172a;">Dharshana Electricals</div>
+              <div style="font-size:10px;color:#6b7280;margin-top:6px;line-height:1.2;">0777839065 / 0772050128<br/>No. 76/2/B Diyagama, Kiriwaththuduwa<br/>dharshanaelectrical60@gmail.com</div>
+            </div>
+              <div style="background:#eff6ff;padding:8px;border-radius:8px;display:inline-block;text-align:right;">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                  <div style="font-size:11px;color:#475569;">Quotation No:</div>
+                  <div style="font-weight:700;color:#1e40af;">#${typeof quotation.id === 'string' ? quotation.id.slice(-6).toUpperCase() : quotation.id !== undefined && quotation.id !== null ? String(quotation.id).slice(-6).toUpperCase() : '------'}</div>
+                </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#475569;line-height:1.2;">
+                <div style="text-align:left;">Date:</div><div style="text-align:right;">${(() => { const dateStr = quotation.date || (quotation as any).createdDate; if (!dateStr) return ''; const dateObj = new Date(dateStr); return dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); })()}</div>
+              </div>
+              ${quotation.orderRef ? (`<div style="margin-top:4px;font-size:10px;color:#475569;display:flex;justify-content:space-between;"><div style="text-align:left;">Order Ref:</div><div style="text-align:right;">${quotation.orderRef}</div></div>`) : ''}
+              <div style="margin-top:4px;font-size:10px;color:#475569;display:flex;justify-content:space-between;"><div style="text-align:left;">Pages:</div><div style="text-align:right;">${pageCount}</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const totalsHtml = `
+      <div style="display:block;margin-top:8px;clear:both;">
+        <div style="float:right;width:240px;background:#f8fafc;padding:8px;border-radius:6px;">
+          <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px;"><div>Subtotal:</div><div>Rs.${quotation.subtotal.toFixed(2)}</div></div>
+          ${hasDiscountInRate ? '' : `<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px;color:#dc2626;"><div>Total Discount:</div><div>Rs.${quotation.totalDiscount.toFixed(2)}</div></div>`}
+          <div style="border-top:1px solid #e5e7eb;padding-top:6px;display:flex;justify-content:space-between;font-weight:700;"><div>Total Amount:</div><div>Rs.${quotation.total.toFixed(2)}</div></div>
+        </div>
+      </div>
+    `;
+
+    const finalHtml = `<!DOCTYPE html>
       <html>
       <head>
-        <title>Quotation #${quotation.id.slice(-6).toUpperCase()}</title>
+        <title>Quotation</title>
         <meta charset="utf-8">
         <style>
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.3;
-            color: #333;
-            padding: 15mm;
-            font-size: 12px;
-          }
-          @page {
-            size: A4;
-            margin: 15mm;
-          }
+          *{margin:0;padding:0;box-sizing:border-box;}
+          html,body{height:100%;}
+          @page{size:A4;margin:0;}
+          body{font-family:Segoe UI, Tahoma, Geneva, Verdana, sans-serif; background: #fff; margin:0;}
+          .page{width:210mm; min-height:297mm; padding:12mm; box-sizing:border-box; display:block;}
           @media print {
-            body {
-              margin: 0;
-              padding: 15mm;
-            }
+            .page { page-break-after:always; break-after:page; }
+            /* Prevent an extra blank page by disabling the forced break on the last page */
+            .page:last-child { page-break-after: auto; break-after: auto; }
+            table{page-break-inside:auto; border-collapse:collapse;}
+            thead{display:table-header-group;}
+            tfoot{display:table-footer-group;}
+            tr{page-break-inside:avoid;}
+            body, table, th, td, p, span { font-size:10px; }
+            th, td{border:1px solid #ddd; padding:3px; vertical-align:top;}
+            -webkit-print-color-adjust:exact;
           }
-          h1 { font-size: 20px; margin-bottom: 8px; }
-          h2 { font-size: 16px; margin-bottom: 4px; }
-          h3 { font-size: 14px; margin-bottom: 8px; }
-          p { font-size: 11px; margin-bottom: 2px; }
-          table { width: 100%; border-collapse: collapse; margin: 8px 0; }
-          th, td { border: 1px solid #ddd; padding: 4px; font-size: 10px; }
-          th { background-color: #f5f5f5; font-weight: bold; }
-          .text-center { text-align: center; }
-          .text-right { text-align: right; }
-          .text-left { text-align: left; }
-          .font-bold { font-weight: bold; }
-          .text-blue-600 { color: #2563eb; }
-          .text-gray-600 { color: #6b7280; }
-          .text-red-600 { color: #dc2626; }
-          .bg-gray-50 { background-color: #f9fafb; }
-          .bg-blue-50 { background-color: #eff6ff; }
-          .border-b { border-bottom: 1px solid #d1d5db; }
-          .border-t { border-top: 1px solid #d1d5db; }
-          .grid { display: grid; }
-          .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
-          .gap-4 { gap: 16px; }
-          .gap-8 { gap: 32px; }
-          .mb-2 { margin-bottom: 8px; }
-          .mb-4 { margin-bottom: 16px; }
-          .mt-2 { margin-top: 8px; }
-          .mt-4 { margin-top: 16px; }
-          .p-3 { padding: 12px; }
-          .px-1 { padding-left: 4px; padding-right: 4px; }
-          .py-2 { padding-top: 8px; padding-bottom: 8px; }
-          .rounded-lg { border-radius: 8px; }
-          .space-y-1 > * + * { margin-top: 4px; }
-          .items-end { align-items: end; }
-          .justify-end { justify-content: end; }
-          .flex { display: flex; }
-          .justify-between { justify-content: space-between; }
-          .ml-auto { margin-left: auto; }
-          .w-32 { width: 128px; }
-          .pt-1 { padding-top: 4px; }
-          .inline-block { display: inline-block; }
-          .max-w-xs { max-width: 320px; }
-          .w-full { width: 100%; }
         </style>
       </head>
       <body>
-        ${clonedContent.innerHTML}
+        <div id="pages-root"></div>
+        <table id="rows-master" style="visibility:hidden;position:absolute;left:-9999px;top:0;width:100%;border-collapse:collapse;">
+          ${tableHeaderHtml}
+          <tbody>
+            ${allRowsHtml}
+          </tbody>
+        </table>
         <script>
-          window.onload = function() {
-            setTimeout(function() {
-              window.print();
-              setTimeout(function() {
-                window.close();
-              }, 1000);
-            }, 500);
-          }
+          (function(){
+            const HEADER_HTML_FIRST = ${JSON.stringify(headerHtmlFirst)};
+            const TABLE_HEADER_HTML = ${JSON.stringify(tableHeaderHtml)};
+            const TOTALS_HTML = ${JSON.stringify(totalsHtml)};
+
+            const pagesRoot = document.getElementById('pages-root');
+            const master = document.getElementById('rows-master');
+            const rows = Array.from(master.querySelectorAll('tbody > tr'));
+
+            function createPage(isFirst){
+              const page = document.createElement('div');
+              page.className = 'page';
+              // build inner with optional header and a table with header and empty tbody
+              page.innerHTML = (isFirst ? HEADER_HTML_FIRST : '') + '<div><div style="font-weight:700;margin-bottom:6px;">Items:</div><table style="width:100%;border-collapse:collapse;table-layout:fixed;">' + TABLE_HEADER_HTML + '<tbody></tbody></table></div>';
+              pagesRoot.appendChild(page);
+              return page;
+            }
+
+            let currentPage = createPage(true);
+
+            for(let r of rows){
+              const tbody = currentPage.querySelector('tbody');
+              tbody.appendChild(r.cloneNode(true));
+              // If overflow, move last row to new page
+              if (currentPage.scrollHeight > currentPage.clientHeight) {
+                tbody.removeChild(tbody.lastElementChild);
+                currentPage = createPage(false);
+                currentPage.querySelector('tbody').appendChild(r.cloneNode(true));
+              }
+            }
+
+            // append totals to last page
+            const lastPage = pagesRoot.lastElementChild;
+            if (lastPage) {
+              lastPage.insertAdjacentHTML('beforeend', TOTALS_HTML);
+            }
+
+            setTimeout(function(){ try{ window.print(); }catch(e){console.error(e);} }, 300);
+          })();
         </script>
       </body>
-      </html>
-    `;
+      </html>`;
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) { alert('Please allow popups to download the PDF'); return; }
+    win.document.write(finalHtml);
+    win.document.close();
   };
 
   return (
@@ -265,7 +333,7 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ quotation, onClose 
           </div>
 
           {/* Customer Information */}
-          <div className="mb-4">
+          <div className="">
             <h3 className="text-sm font-bold text-gray-900 mb-2 border-b border-gray-200 pb-1">Bill To:</h3>
             <div className="bg-gray-50 p-3 rounded-lg">
               <p className="font-semibold text-sm text-gray-900">{quotation.customerName}</p>
