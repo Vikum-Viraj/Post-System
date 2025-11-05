@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axiosInstance from '../config/axiosConfig';
-import { X } from 'lucide-react';
+import { X, Plus, Search } from 'lucide-react';
 import { Quotation, QuotationItem } from '../types';
 
 interface QuotationEditModalProps {
@@ -19,6 +19,106 @@ const QuotationEditModal: React.FC<QuotationEditModalProps> = ({ quotation, onCl
     receiverAddress: quotation.receiverAddress || '',
     items: quotation.items.map(item => ({ ...item })),
   });
+
+  // --- Product search / add-item states (copied/adapted from QuotationForm)
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const searchTimeout = useRef<number | null>(null);
+  const [currentItem, setCurrentItem] = useState({ productCode: '', quantity: 1, discount: 0, discountPercent: '' });
+  const [showDiscountInRate, setShowDiscountInRate] = useState(false);
+  const [productError, setProductError] = useState('');
+
+  // filtered products to show suggestions
+  const filteredProducts = searchTerm ? searchResults : [];
+
+  useEffect(() => {
+    if (!searchTerm) {
+      setSearchResults([]);
+      return;
+    }
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = window.setTimeout(async () => {
+      setIsLoading(true);
+      try {
+        const response = await axiosInstance.get('/products');
+        const allProducts = response.data || [];
+        const filtered = allProducts.filter((product: any) =>
+          String(product.code).toLowerCase().includes(searchTerm.toLowerCase()) ||
+          String(product.name).toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        setSearchResults(filtered);
+      } catch (err) {
+        setSearchResults([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 300);
+    return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current); };
+  }, [searchTerm]);
+
+  const selectedProduct = filteredProducts.find(p => p.code === currentItem.productCode) || null;
+
+  useEffect(() => {
+    if (currentItem.productCode && !selectedProduct && !searchTerm) {
+      setProductError('Product not found');
+    } else if (currentItem.productCode && !selectedProduct && searchTerm && !isLoading && searchResults.length === 0) {
+      setProductError('Product not found');
+    } else {
+      setProductError('');
+    }
+  }, [currentItem.productCode, selectedProduct, searchTerm, isLoading, searchResults]);
+
+  const addItem = () => {
+    if (!selectedProduct) {
+      setProductError('Please select a valid product');
+      return;
+    }
+    if (currentItem.quantity <= 0) {
+      setProductError('Quantity must be at least 1');
+      return;
+    }
+
+    let discount = Number(currentItem.discount) || 0;
+    let unitPrice = Number(selectedProduct.mrp) || 0;
+    let itemTotal = 0;
+
+    if (currentItem.discountPercent) {
+      const percent = parseFloat(currentItem.discountPercent);
+      if (!isNaN(percent) && percent >= 0 && percent <= 100) {
+        if (showDiscountInRate) {
+          discount = Number(selectedProduct.mrp) * (percent / 100);
+        } else {
+          discount = (Number(selectedProduct.mrp) * Number(currentItem.quantity)) * (percent / 100);
+        }
+      }
+    }
+
+    if (showDiscountInRate) {
+      unitPrice = Number(selectedProduct.mrp) - discount;
+      itemTotal = unitPrice * currentItem.quantity;
+    } else {
+      itemTotal = (Number(selectedProduct.mrp) * currentItem.quantity) - discount;
+    }
+
+    const newItem: QuotationItem = {
+      productId: selectedProduct.id?.toString() ?? '',
+      productCode: selectedProduct.code,
+      productName: selectedProduct.name,
+      description: selectedProduct.description || '',
+      mrp: Number(selectedProduct.mrp) || 0,
+      unit: selectedProduct.unit || '',
+      unitPrice: showDiscountInRate ? unitPrice : Number(selectedProduct.mrp) || 0,
+      quantity: Number(currentItem.quantity),
+      discount: discount,
+      total: itemTotal,
+    };
+
+    setForm(prev => ({ ...prev, items: [...prev.items, newItem] }));
+    setCurrentItem({ productCode: '', quantity: 1, discount: 0, discountPercent: '' });
+    setSearchTerm('');
+    setProductError('');
+  };
 
   // Reset form state when a new quotation is received
   useEffect(() => {
@@ -134,6 +234,84 @@ const QuotationEditModal: React.FC<QuotationEditModalProps> = ({ quotation, onCl
           </div>
           {/* Items Table */}
           <div>
+            {/* Add Items (search + add) */}
+            <div className="mb-4 bg-gray-50 p-3 rounded">
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="font-semibold text-gray-900">Add Item</h4>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Show discount in rate</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowDiscountInRate(!showDiscountInRate)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${showDiscountInRate ? 'bg-emerald-600' : 'bg-gray-200'}`}>
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showDiscountInRate ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="flex items-center">
+                  <Search className="h-5 w-5 absolute left-3 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Enter product code or name..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setCurrentItem({ ...currentItem, productCode: e.target.value });
+                    }}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded"
+                  />
+                </div>
+                {productError && <p className="text-sm text-red-600 mt-1">{productError}</p>}
+                {searchTerm && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {isLoading ? (
+                      <div className="px-4 py-2 text-gray-500">Searching...</div>
+                    ) : filteredProducts.length > 0 ? (
+                      filteredProducts.map((product) => (
+                        <button
+                          key={product.id}
+                          type="button"
+                          onClick={() => {
+                            setCurrentItem({ productCode: product.code, quantity: 1, discount: 0, discountPercent: '' });
+                            setSearchTerm(product.code);
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                        >
+                          <div className="font-medium text-gray-900">{product.name}</div>
+                          <div className="text-sm text-gray-500">Code: {product.code} | MRP: Rs.{Number(product.mrp).toFixed(2)}</div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-2 text-gray-500">No products found</div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {selectedProduct && (
+                <div className="mt-3 bg-white p-3 rounded border border-gray-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-medium text-gray-900">{selectedProduct.name}</div>
+                    <div className="font-semibold">Rs.{Number(selectedProduct.mrp).toFixed(2)}</div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+                    <div>
+                      <label className="block text-xs text-gray-600">Quantity</label>
+                      <input type="number" min="1" value={currentItem.quantity} onChange={e => setCurrentItem({ ...currentItem, quantity: Math.max(1, Number(e.target.value)) })} className="w-full border rounded px-2 py-1" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600">Discount (%)</label>
+                      <input type="number" min="0" max="100" step="0.01" value={currentItem.discountPercent} onChange={e => setCurrentItem({ ...currentItem, discountPercent: e.target.value })} className="w-full border rounded px-2 py-1" />
+                    </div>
+                    <div className="md:col-span-2 flex items-center">
+                      <button type="button" onClick={addItem} className="ml-auto bg-emerald-600 text-white px-4 py-2 rounded flex items-center gap-2"><Plus className="w-4 h-4"/> <span>Add Item</span></button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
             <h3 className="text-sm font-bold text-gray-900 mb-2 border-b border-gray-200 pb-1">Items</h3>
             <table className="w-full border-collapse border border-gray-300 text-xs">
               <thead>
